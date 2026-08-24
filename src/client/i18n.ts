@@ -34,6 +34,9 @@ export type TranslationKey =
   | 'panel.price.input'
   | 'panel.price.output'
   | 'panel.price.cache'
+  | 'panel.savings'
+  | 'panel.undo'
+  | 'panel.switchSuccess'
   | 'panel.strategy.balanced'
   | 'panel.strategy.price'
   | 'panel.strategy.speed'
@@ -82,7 +85,7 @@ export type TranslationKey =
 
 const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
   'zh-CN': {
-    'panel.title': 'OpenRouter 供应商',
+    'panel.title': 'OpenRouter 供应商推荐',
     'panel.currentModelLoading': '正在读取当前模型…',
     'panel.modelSelect': '选择 DSH 模型',
     'panel.strategyGroup': '推荐策略',
@@ -113,6 +116,9 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.price.input': '输入',
     'panel.price.output': '输出',
     'panel.price.cache': '缓存',
+    'panel.savings': '预计节省 {percent}%',
+    'panel.undo': '切回上一个',
+    'panel.switchSuccess': '供应商已切换，可立即切回上一个选择。',
     'panel.strategy.balanced': '综合最佳',
     'panel.strategy.price': '价格优先',
     'panel.strategy.speed': '速度优先',
@@ -160,7 +166,7 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'settings.connection.guide': '请前往 DSH 设置 → 模型，为 OpenRouter provider 配置 API Key。插件不会读取或显示密钥内容。',
   },
   'en-US': {
-    'panel.title': 'OpenRouter Providers',
+    'panel.title': 'OpenRouter Provider Recommendations',
     'panel.currentModelLoading': 'Loading current model…',
     'panel.modelSelect': 'Select DSH model',
     'panel.strategyGroup': 'Ranking strategy',
@@ -191,6 +197,9 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.price.input': 'Input',
     'panel.price.output': 'Output',
     'panel.price.cache': 'Cache',
+    'panel.savings': 'Est. {percent}% less',
+    'panel.undo': 'Switch back',
+    'panel.switchSuccess': 'Provider switched. You can immediately return to the previous choice.',
     'panel.strategy.balanced': 'Best overall',
     'panel.strategy.price': 'Price first',
     'panel.strategy.speed': 'Speed first',

@@ -13,6 +13,7 @@ export interface ProviderPanelSnapshot {
   applyingTag: string | null
   successTag: string | null
   updatedAt: number | null
+  previousTag: string | null
   credential: { configured: boolean; ref: string; source: 'provider' | 'fallback' } | null
 }
 
@@ -51,7 +52,7 @@ async function responseJson<T>(response: Response): Promise<T> {
 }
 
 export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): ProviderPanelStore {
-  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: 'balanced', error: null, credential: null, applyingTag: null, successTag: null, updatedAt: null }
+  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: 'balanced', error: null, credential: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null }
   const listeners = new Set<() => void>()
   let generation = 0
   let controller: AbortController | null = null
@@ -94,7 +95,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
     async toggle(sessionId) { if (snapshot.open) store.close(); else await store.open(sessionId) },
     async open(sessionId) {
       const operation = begin()
-      publish({ open: true, status: 'loading', sessionId, strategy: 'balanced', data: null, models: [], selected: null, credential: null, error: null, applyingTag: null, successTag: null, updatedAt: null })
+      publish({ open: true, status: 'loading', sessionId, strategy: 'balanced', data: null, models: [], selected: null, credential: null, error: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null })
       try {
         const catalog = await responseJson<ModelCatalogResponse>(await fetchImpl(`/api/openrouter-providers/models?sessionId=${encodeURIComponent(sessionId)}`, { signal: operation.signal }))
         if (operation.id !== generation) return
@@ -128,6 +129,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
     },
     async apply(sessionId, tag) {
       const operation = begin()
+      const previousTag = snapshot.data?.currentTag ?? null
       publish({ open: true, status: 'applying', sessionId, error: null, applyingTag: tag, successTag: null })
       try {
         await responseJson(await fetchImpl('/api/openrouter-providers/apply', {
@@ -136,7 +138,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
         if (operation.id !== generation) return
         const markCurrent = (row: RecommendationResponse['recommended'][number]) => ({ ...row, current: row.tag === tag })
         const data = snapshot.data ? { ...snapshot.data, currentTag: tag, recommended: snapshot.data.recommended.map(markCurrent), rest: snapshot.data.rest.map(markCurrent) } : null
-        publish({ open: true, status: 'ready', data, applyingTag: null, successTag: tag, error: null })
+        publish({ open: true, status: 'ready', data, applyingTag: null, successTag: tag, previousTag: previousTag === tag ? snapshot.previousTag : previousTag, error: null })
       } catch (error) {
         if (operation.id !== generation || operation.signal.aborted) return
         const message = error instanceof Error ? error.message : String(error)

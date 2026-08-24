@@ -65,6 +65,7 @@ describe('ProviderPanelStore', () => {
     await store.apply('s1', 'coreweave/fp8')
     expect(JSON.parse(String(fetch.mock.calls[2]![1]?.body))).toEqual({ sessionId: 's1', tag: 'coreweave/fp8', ...modelCatalog.current, name: 'deepseek DeepSeek V4 · DeepInfra', strategy: 'balanced' })
     expect(store.getSnapshot()).toMatchObject({ open: true, status: 'ready', applyingTag: null, successTag: 'coreweave/fp8', data: { currentTag: 'coreweave/fp8' }, error: null })
+    expect(store.getSnapshot().previousTag).toBe('deepinfra/fp8')
     expect(store.getSnapshot().data?.recommended[0]?.current).toBe(true)
   })
 

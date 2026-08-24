@@ -12,8 +12,8 @@ describe('client i18n', () => {
   })
 
   it('translates shared UI copy for both supported locales', () => {
-    expect(createI18n('zh-CN').t('panel.title')).toBe('OpenRouter 供应商')
-    expect(createI18n('en-US').t('panel.title')).toBe('OpenRouter Providers')
+    expect(createI18n('zh-CN').t('panel.title')).toBe('OpenRouter 供应商推荐')
+    expect(createI18n('en-US').t('panel.title')).toBe('OpenRouter Provider Recommendations')
     expect(createI18n('zh-CN').t('settings.summary')).toContain('推荐数量')
     expect(createI18n('en-US').t('settings.summary')).toContain('ranking weights')
     expect(createI18n('zh-CN').t('settings.group.weights.scope')).toContain('仅影响“综合最佳”')

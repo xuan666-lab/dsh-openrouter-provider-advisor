@@ -25,6 +25,7 @@ export interface ProviderRowView {
   badge: string
   breakdown: string
   priceLabel: string
+  savingsLabel: string | null
 }
 
 const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.06)', color: '#e4e4e7', cursor: 'pointer' }
@@ -48,6 +49,13 @@ export function providerPriceLabel(row: Pick<RankedProvider, 'price'>, i18n = cr
   return `${i18n.t('panel.price.input')} $${row.price.input} · ${i18n.t('panel.price.output')} $${row.price.output} · ${i18n.t('panel.price.cache')} $${row.price.cache} / M tokens`
 }
 
+export function estimatedSavings(current: RankedProvider['price'], candidate: RankedProvider['price']): number | null {
+  const cost = (price: RankedProvider['price']) => price.input * .02 + price.output * .08 + price.cache * .9
+  const baseline = cost(current)
+  const saving = baseline > 0 ? Math.round((1 - cost(candidate) / baseline) * 100) : 0
+  return saving > 0 ? saving : null
+}
+
 export const STRATEGY_OPTIONS: ReadonlyArray<{ id: RankingStrategy; labelKey: 'panel.strategy.balanced' | 'panel.strategy.price' | 'panel.strategy.speed' | 'panel.strategy.context' }> = [
   { id: 'balanced', labelKey: 'panel.strategy.balanced' },
   { id: 'price', labelKey: 'panel.strategy.price' },
@@ -56,6 +64,8 @@ export const STRATEGY_OPTIONS: ReadonlyArray<{ id: RankingStrategy; labelKey: 'p
 ]
 
 export function providerRows(data: RecommendationResponse, i18n = createI18n('zh-CN')): ProviderRowView[] {
+  const allRows = [...data.recommended, ...data.rest]
+  const currentPrice = allRows.find(row => row.current)?.price
   const map = (group: ProviderRowView['group']) => (row: RecommendationResponse['recommended'][number]): ProviderRowView => ({
     group,
     tag: row.tag,
@@ -64,6 +74,7 @@ export function providerRows(data: RecommendationResponse, i18n = createI18n('zh
     score: row.score,
     detail: `${row.quantization} · ${row.tps} t/s · ${row.contextLength.toLocaleString()} ctx · ${row.uptime === null ? 'N/A' : `${row.uptime.toFixed(2)}%`} ${i18n.t('panel.uptime')}`,
     priceLabel: providerPriceLabel(row, i18n),
+    savingsLabel: currentPrice && !row.current ? (() => { const value = estimatedSavings(currentPrice, row.price); return value === null ? null : i18n.t('panel.savings', { percent: value }) })() : null,
     scoreLabel: row.current ? `${i18n.t('panel.current')} · ${row.score.toFixed(1)}` : row.score.toFixed(1),
     ...providerInsight(row, i18n),
   })
@@ -178,6 +189,10 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
       ),
       state.credential !== null && !state.credential.configured ? createElement('p', { role: 'status', style: { margin: '14px 22px 0', padding: 12, borderRadius: 8, color: '#fdba74', background: 'rgba(124,45,18,.28)', border: '1px solid rgba(249,115,22,.25)', fontSize: 13, lineHeight: 1.5 } }, i18n.t('panel.credentialMissing', { ref: state.credential.ref })) : null,
       state.error ? createElement('p', { role: 'alert', style: { margin: '14px 22px 0', padding: 12, borderRadius: 8, color: '#fca5a5', background: 'rgba(127,29,29,.35)' } }, state.error) : null,
+      state.successTag && state.previousTag ? createElement('div', { role: 'status', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '12px 22px 0', padding: '9px 11px', borderRadius: 8, color: '#bbf7d0', background: 'rgba(20,83,45,.24)', border: '1px solid rgba(34,197,94,.22)', fontSize: 12 } },
+        createElement('span', null, i18n.t('panel.switchSuccess')),
+        createElement('button', { type: 'button', disabled: state.status === 'applying', onClick: () => { if (target.sessionId && state.previousTag) consume(props.store.apply(target.sessionId, state.previousTag)) }, style: { ...actionButtonStyle, height: 30, color: '#bbf7d0', whiteSpace: 'nowrap' } }, i18n.t('panel.undo')),
+      ) : null,
       state.status === 'loading' && rows.length === 0 ? createElement('p', { style: { padding: 22, color: '#a1a1aa' } }, i18n.t('panel.loading')) : null,
       credentialReady && rows.length > 0 ? createElement('div', { style: { display: 'grid', gap: 2, margin: '12px 22px 0', color: '#71717a', fontSize: 11, lineHeight: 1.5 } },
         createElement('span', null, i18n.t('panel.switchHint')),
@@ -213,6 +228,7 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
           createElement('span', { style: { display: 'grid', gap: 3, minWidth: 0 } },
             createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
             createElement('span', { title: row.priceLabel, style: { color: '#d4d4d8', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.priceLabel),
+            row.savingsLabel ? createElement('small', { style: { color: '#86efac', fontSize: 10, fontWeight: 600 } }, row.savingsLabel) : null,
           ),
           createElement('span', { title: row.breakdown, 'aria-label': `${row.scoreLabel}; ${row.breakdown}`, style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right', textDecoration: 'underline dotted rgba(161,161,170,.6)', textUnderlineOffset: 3 } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
           ))
