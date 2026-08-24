@@ -39,7 +39,7 @@
    unset XUANFENG_GH_TOKEN
    ```
 
-5. 发布 npm。若返回 `EOTP`，打开终端本次输出的完整 `https://www.npmjs.com/auth/cli/<id>` 地址完成 2FA，然后重新执行发布；不要使用被脱敏或上一次生成的链接：
+5. 发布 npm。授权方式为已登录的 npm 账号配合发布时生成的一次性网页 2FA，不在项目中保存 token 或 OTP。若返回 `EOTP`，打开终端本次输出的完整 `https://www.npmjs.com/auth/cli/<id>` 地址完成授权，然后重新执行发布；不要使用被脱敏或上一次生成的链接：
 
    ```bash
    npm publish --access public
