@@ -1,4 +1,4 @@
-import { createElement, Fragment, useEffect, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { createElement, Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { RecommendationResponse } from '../directory.js'
 import type { RankedProvider } from '../types.js'
 import type { RankingStrategy } from '../config.js'
@@ -28,7 +28,15 @@ export interface ProviderRowView {
   savingsLabel: string | null
 }
 
-const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.06)', color: '#e4e4e7', cursor: 'pointer' }
+const textPrimary = 'var(--dsw-alias-label-primary, #f4f4f5)'
+const textSecondary = 'var(--dsw-alias-label-secondary, #d4d4d8)'
+const textTertiary = 'var(--dsw-alias-label-tertiary, #a1a1aa)'
+const borderL2 = '1px solid var(--dsw-alias-border-l2, rgba(255,255,255,.12))'
+const bgLayer1 = 'var(--dsw-alias-bg-layer-1, #18181b)'
+const bgLayer2 = 'var(--dsw-alias-bg-layer-2, #27272a)'
+const bgLayer3 = 'var(--dsw-alias-bg-layer-3, rgba(255,255,255,.05))'
+
+const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: borderL2, background: bgLayer3, color: textPrimary, cursor: 'pointer' }
 const iconButtonStyle: CSSProperties = { ...actionButtonStyle, width: 36, padding: 0, fontSize: 20, lineHeight: 1 }
 
 export function providerInsight(row: RankedProvider, i18n = createI18n('zh-CN')): { badge: string; breakdown: string } {
@@ -127,7 +135,12 @@ const backdrop: CSSProperties = {
 }
 const panelStyle: CSSProperties = {
   width: 'min(720px, 100%)', maxHeight: 'min(760px, calc(100vh - 48px))', overflow: 'hidden', display: 'flex', flexDirection: 'column',
-  border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, background: '#18181b', color: '#f4f4f5', boxShadow: '0 24px 80px rgba(0,0,0,.5)',
+  border: borderL2, borderRadius: 16, background: bgLayer1, color: textPrimary, boxShadow: '0 24px 80px rgba(0,0,0,.5)', outline: 'none',
+}
+
+export function freshnessLabel(updatedAt: number, now: number, i18n = createI18n('zh-CN')): string {
+  const minutes = Math.max(0, Math.floor((now - updatedAt) / 60_000))
+  return minutes === 0 ? i18n.t('panel.updatedJustNow') : i18n.t('panel.updatedMinutesAgo', { minutes })
 }
 
 export const providerGridColumns = 'minmax(110px,1fr) minmax(0,2fr) minmax(54px,auto)'
@@ -138,6 +151,8 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
   const currentAddress = props.useSessions(state => state.currentAddress)
   const state = useSyncExternalStore(props.store.subscribe, props.store.getSnapshot, props.store.getSnapshot)
   const target = providerTriggerState({ current, currentAddress })
+  const dialogRef = useRef<HTMLElement>(null)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (!state.open) return
@@ -145,21 +160,52 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
     else if (state.sessionId !== target.sessionId) consume(props.store.open(target.sessionId))
   }, [state.open, state.sessionId, target.sessionId, props.store])
 
+  useEffect(() => {
+    if (!state.open) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [state.open, state.updatedAt])
+
+  useEffect(() => {
+    if (!state.open) return
+    const previous = document.activeElement
+    dialogRef.current?.focus()
+    return () => { if (previous instanceof HTMLElement) previous.focus() }
+  }, [state.open])
+
   if (!state.open) return null
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Escape') {
+      event.stopPropagation()
+      props.store.close()
+      return
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return
+    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), select:not(:disabled), input:not(:disabled), summary, [tabindex]:not([tabindex="-1"])'))
+    if (focusable.length === 0) return
+    const first = focusable[0]!
+    const last = focusable.at(-1)!
+    const active = document.activeElement
+    if (event.shiftKey && (active === first || active === dialogRef.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus() }
+  }
   const rows = state.data ? providerRows(state.data, i18n) : []
   const credentialReady = state.credential?.configured === true
   const columns = providerTableColumns(i18n)
   const selectedValue = state.selected ? JSON.stringify([state.selected.provider, state.selected.model]) : ''
   let lastGroup: string | null = null
-  return createElement('div', { style: backdrop, role: 'presentation', onMouseDown: (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) props.store.close() } },
-    createElement('section', { role: 'dialog', 'aria-modal': true, 'aria-label': i18n.t('panel.title'), style: panelStyle },
-      createElement('header', { style: { display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: 16, padding: '18px 22px 14px', borderBottom: '1px solid rgba(255,255,255,.1)' } },
+  return createElement('div', { style: backdrop, role: 'presentation', onKeyDown, onMouseDown: (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) props.store.close() } },
+    createElement('section', { ref: dialogRef, role: 'dialog', 'aria-modal': true, 'aria-label': i18n.t('panel.title'), tabIndex: -1, style: panelStyle },
+      createElement('header', { style: { display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: 16, padding: '18px 22px 14px', borderBottom: borderL2 } },
         createElement('div', { style: { minWidth: 0, flex: 1 } },
           createElement('h2', { style: { margin: 0, fontSize: 20 } }, i18n.t('panel.title')),
-          createElement('label', { style: { display: 'block', margin: '10px 0 5px', color: '#71717a', fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' } }, i18n.t('panel.currentModel')),
+          createElement('label', { style: { display: 'block', margin: '10px 0 5px', color: textTertiary, fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' } }, i18n.t('panel.currentModel')),
           createElement('select', {
             'aria-label': i18n.t('panel.modelSelect'), value: selectedValue, disabled: !credentialReady || state.models.length === 0 || state.status === 'applying',
-            style: { width: 'min(420px, 100%)', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,.16)', background: '#27272a', color: '#f4f4f5' },
+            style: { width: 'min(420px, 100%)', padding: '8px 10px', borderRadius: 8, border: borderL2, background: bgLayer2, color: textPrimary },
             onChange: (event: { currentTarget: { value: string } }) => {
               if (!target.sessionId) return
               const [provider, model] = JSON.parse(event.currentTarget.value) as [string, string]
@@ -169,7 +215,7 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
           }, ...state.models.map(model => createElement('option', {
             key: `${model.provider}\0${model.model}`, value: JSON.stringify([model.provider, model.model]),
           }, `${model.name}${model.current ? ` (${i18n.t('panel.current')})` : ''}`))),
-          createElement('div', { role: 'group', 'aria-label': i18n.t('panel.strategyGroup'), style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 3, width: 'min(520px, 100%)', marginTop: 10, padding: 3, borderRadius: 9, background: 'rgba(255,255,255,.05)' } },
+          createElement('div', { role: 'group', 'aria-label': i18n.t('panel.strategyGroup'), style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 3, width: 'min(520px, 100%)', marginTop: 10, padding: 3, borderRadius: 9, background: bgLayer3 } },
             ...STRATEGY_OPTIONS.map(option => {
               const active = state.strategy === option.id
               return createElement('button', {
@@ -177,7 +223,7 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
                 disabled: !credentialReady || state.status === 'loading' || state.status === 'applying',
                 onClick: () => { if (target.sessionId && !active) consume(props.store.setStrategy(target.sessionId, option.id)) },
                 title: i18n.t(option.labelKey),
-                style: { minHeight: 38, border: active ? '1px solid #3b82f6' : '1px solid transparent', borderRadius: 6, padding: '5px 8px', background: active ? 'rgba(37,99,235,.15)' : 'transparent', color: active ? '#93c5fd' : '#d4d4d8', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap', fontSize: 12 },
+                style: { minHeight: 38, border: active ? '1px solid #3b82f6' : '1px solid transparent', borderRadius: 6, padding: '5px 8px', background: active ? 'rgba(37,99,235,.15)' : 'transparent', color: active ? '#93c5fd' : textSecondary, cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap', fontSize: 12 },
               }, i18n.t(option.labelKey))
             }),
           ),
@@ -193,20 +239,21 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
         createElement('span', null, i18n.t('panel.switchSuccess')),
         createElement('button', { type: 'button', disabled: state.status === 'applying', onClick: () => { if (target.sessionId && state.previousTag) consume(props.store.apply(target.sessionId, state.previousTag)) }, style: { ...actionButtonStyle, height: 30, color: '#bbf7d0', whiteSpace: 'nowrap' } }, i18n.t('panel.undo')),
       ) : null,
-      state.status === 'loading' && rows.length === 0 ? createElement('p', { style: { padding: 22, color: '#a1a1aa' } }, i18n.t('panel.loading')) : null,
-      credentialReady && rows.length > 0 ? createElement('div', { style: { display: 'grid', gap: 2, margin: '12px 22px 0', color: '#71717a', fontSize: 11, lineHeight: 1.5 } },
+      state.status === 'loading' && rows.length === 0 ? createElement('p', { style: { padding: 22, color: textTertiary } }, i18n.t('panel.loading')) : null,
+      credentialReady && rows.length > 0 ? createElement('div', { style: { display: 'grid', gap: 2, margin: '12px 22px 0', color: textTertiary, fontSize: 11, lineHeight: 1.5 } },
         createElement('span', null, i18n.t('panel.switchHint')),
-        createElement('span', { style: { color: '#52525b', fontSize: 10 } }, i18n.t('panel.uptimeDelayHint')),
+        createElement('span', { style: { fontSize: 10, opacity: .8 } }, i18n.t('panel.uptimeDelayHint')),
+        state.updatedAt === null ? null : createElement('span', { style: { fontSize: 10, opacity: .8 } }, freshnessLabel(state.updatedAt, now, i18n)),
       ) : null,
       createElement('div', { style: { overflowY: 'auto', padding: '12px 14px 20px' } },
         ...rows.flatMap(row => {
           const nodes: ReactNode[] = []
           if (lastGroup !== row.group) {
             lastGroup = row.group
-            nodes.push(createElement('h3', { key: `group-${row.group}`, style: { margin: '14px 8px 8px', color: '#a1a1aa', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em' } }, row.group))
+            nodes.push(createElement('h3', { key: `group-${row.group}`, style: { margin: '14px 8px 8px', color: textTertiary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em' } }, row.group))
             nodes.push(createElement('div', {
               key: `columns-${row.group}`,
-              style: { display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, padding: '0 14px 8px', color: '#71717a', fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase' },
+              style: { display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, padding: '0 14px 8px', color: textTertiary, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase' },
             },
             createElement('span', null, columns[0]),
             createElement('span', null, columns[1]),
@@ -219,21 +266,37 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
             key: row.tag, type: 'button', disabled: row.current || state.status === 'applying',
             onClick: () => { if (target.sessionId) consume(props.store.apply(target.sessionId, row.tag)) },
             title: row.current ? i18n.t('panel.current') : i18n.t('panel.switchAction'),
-            style: { width: '100%', display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, alignItems: 'center', padding: '12px 14px', marginBottom: 6, borderRadius: 10, border: row.current ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,.12)', background: row.current ? 'rgba(37,99,235,.14)' : 'rgba(255,255,255,.045)', color: 'inherit', textAlign: 'left', cursor: row.current ? 'default' : 'pointer', transition: 'background .15s ease,border-color .15s ease,transform .15s ease', opacity: state.status === 'applying' && !switching ? .55 : 1 },
+            style: { width: '100%', display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, alignItems: 'center', padding: '12px 14px', marginBottom: 6, borderRadius: 10, border: row.current ? '1px solid #3b82f6' : borderL2, background: row.current ? 'rgba(37,99,235,.14)' : bgLayer3, color: 'inherit', textAlign: 'left', cursor: row.current ? 'default' : 'pointer', transition: 'background .15s ease,border-color .15s ease,transform .15s ease', opacity: state.status === 'applying' && !switching ? .55 : 1 },
           },
           createElement('span', { style: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 } },
             createElement('strong', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, row.providerName),
             createElement('small', { style: { flex: '0 0 auto', padding: '2px 6px', borderRadius: 999, color: '#a5b4fc', background: 'rgba(99,102,241,.13)', fontSize: 9, fontWeight: 600 } }, row.badge),
           ),
           createElement('span', { style: { display: 'grid', gap: 3, minWidth: 0 } },
-            createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
-            createElement('span', { title: row.priceLabel, style: { color: '#d4d4d8', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.priceLabel),
+            createElement('span', { title: row.detail, style: { color: textTertiary, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
+            createElement('span', { title: row.priceLabel, style: { color: textSecondary, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.priceLabel),
             row.savingsLabel ? createElement('small', { style: { color: '#86efac', fontSize: 10, fontWeight: 600 } }, row.savingsLabel) : null,
           ),
-          createElement('span', { title: row.breakdown, 'aria-label': `${row.scoreLabel}; ${row.breakdown}`, style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right', textDecoration: 'underline dotted rgba(161,161,170,.6)', textUnderlineOffset: 3 } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
+          createElement('span', { title: row.breakdown, 'aria-label': `${row.scoreLabel}; ${row.breakdown}`, style: { color: row.current ? '#60a5fa' : textSecondary, fontSize: 12, textAlign: 'right', textDecoration: 'underline dotted rgba(161,161,170,.6)', textUnderlineOffset: 3 } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
           ))
           return nodes
         }),
+        state.history.length === 0 ? null : createElement('details', { style: { margin: '10px 8px 0', padding: '10px 12px', borderRadius: 10, border: borderL2 } },
+          createElement('summary', { style: { cursor: 'pointer', color: textTertiary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em' } }, i18n.t('panel.history.title')),
+          ...state.history.map(item => {
+            const revertable = item.fromTag !== null && state.data?.openrouterModel === item.model && state.data.currentTag !== item.fromTag
+            return createElement('div', { key: `${item.at}-${item.toTag}`, title: item.model, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: borderL2, fontSize: 12, marginTop: 8 } },
+              createElement('span', { style: { color: textTertiary, flex: '0 0 auto' } }, new Date(item.at).toLocaleTimeString(i18n.locale, { hour: '2-digit', minute: '2-digit' })),
+              createElement('span', { style: { color: textSecondary, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, `${item.fromName ?? item.fromTag ?? '—'} → ${item.toName}`),
+              item.fromTps !== null && item.toTps !== null ? createElement('span', { style: { color: textTertiary, flex: '0 0 auto' } }, `${item.fromTps} → ${item.toTps} t/s`) : null,
+              revertable ? createElement('button', {
+                type: 'button', disabled: state.status === 'applying',
+                onClick: () => { if (target.sessionId && item.fromTag) consume(props.store.apply(target.sessionId, item.fromTag)) },
+                style: { ...actionButtonStyle, height: 26, padding: '0 10px', marginLeft: 'auto', fontSize: 12, whiteSpace: 'nowrap' },
+              }, i18n.t('panel.history.revert')) : null,
+            )
+          }),
+        ),
       ),
     ),
   )

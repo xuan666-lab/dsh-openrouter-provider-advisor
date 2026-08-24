@@ -41,6 +41,10 @@ export type TranslationKey =
   | 'panel.strategy.price'
   | 'panel.strategy.speed'
   | 'panel.strategy.context'
+  | 'panel.updatedJustNow'
+  | 'panel.updatedMinutesAgo'
+  | 'panel.history.title'
+  | 'panel.history.revert'
   | 'settings.title'
   | 'settings.summary'
   | 'settings.action.weights'
@@ -123,6 +127,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.strategy.price': '价格优先',
     'panel.strategy.speed': '速度优先',
     'panel.strategy.context': '上下文优先',
+    'panel.updatedJustNow': '数据刚刚更新',
+    'panel.updatedMinutesAgo': '数据更新于 {minutes} 分钟前',
+    'panel.history.title': '切换历史',
+    'panel.history.revert': '切回',
     'settings.title': 'OpenRouter 供应商',
     'settings.summary': '推荐数量、综合最佳权重与全局价格模型。',
     'settings.action.weights': '应用综合权重',
@@ -204,6 +212,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.strategy.price': 'Price first',
     'panel.strategy.speed': 'Speed first',
     'panel.strategy.context': 'Context first',
+    'panel.updatedJustNow': 'Updated just now',
+    'panel.updatedMinutesAgo': 'Updated {minutes} min ago',
+    'panel.history.title': 'Switch history',
+    'panel.history.revert': 'Revert',
     'settings.title': 'OpenRouter Providers',
     'settings.summary': 'Recommended count, ranking weights, and price blend.',
     'settings.action.weights': 'Apply ranking weights',

@@ -10,7 +10,7 @@ const endpoint: OpenRouterEndpoint = {
 function dependencies() {
   return {
     upsertPreset: vi.fn(async () => ({ slug: 'deepseek-v4-coreweave' })),
-    readModels: vi.fn(async () => [{ id: '@preset/deepseek-v4-old', name: 'Old', reasoningEfforts: { off: null, high: 'high', max: 'ultra' } }]),
+    readModels: vi.fn<() => Promise<import('../src/apply-provider.js').DshModelEntry[]>>(async () => [{ id: '@preset/deepseek-v4-old', name: 'Old', reasoningEfforts: { off: null, high: 'high', max: 'ultra' } }]),
     writeModels: vi.fn<(route: string, models: import('../src/apply-provider.js').DshModelEntry[]) => Promise<void>>(async () => undefined),
     selectModel: vi.fn(async () => undefined),
     saveDefault: vi.fn(async () => undefined),
@@ -31,6 +31,18 @@ describe('applyProvider', () => {
     expect(deps.saveDefault).toHaveBeenCalledWith({ provider: 'openrouter-main', model: '@preset/deepseek-v4-coreweave', reasoningEffort: 'high' })
     expect(deps.upsertPreset.mock.invocationCallOrder[0]).toBeLessThan(deps.writeModels.mock.invocationCallOrder[0]!)
     expect(deps.writeModels.mock.invocationCallOrder[0]).toBeLessThan(deps.selectModel.mock.invocationCallOrder[0]!)
+  })
+
+  it('removes stale preset entries for the same OpenRouter model while keeping unrelated entries', async () => {
+    const deps = dependencies()
+    deps.readModels.mockResolvedValueOnce([
+      { id: '@preset/deepseek-v4-novita', name: 'V4 · Novita', openrouterModel: 'deepseek/deepseek-v4' },
+      { id: '@preset/deepseek-v4-pro-novita', name: 'V4 Pro · Novita', openrouterModel: 'deepseek/deepseek-v4-pro' },
+      { id: 'deepseek-chat', name: 'Direct route' },
+    ])
+    await applyProvider(deps, input)
+    const written = deps.writeModels.mock.calls[0]![1]
+    expect(written.map(model => model.id)).toEqual(['@preset/deepseek-v4-pro-novita', 'deepseek-chat', '@preset/deepseek-v4-coreweave'])
   })
 
   it('does not mutate settings when preset creation fails', async () => {

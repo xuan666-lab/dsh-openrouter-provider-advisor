@@ -62,8 +62,9 @@ export async function applyProvider(deps: ApplyProviderDependencies, input: Appl
       reasoningEfforts: effort.declaration,
       openrouterModel: input.openrouterModel,
     }
-    const index = models.findIndex(model => model.id === modelId)
-    const next = [...models]
+    const next = models.filter(model => model.id === modelId
+      || !(model.id.startsWith('@preset/') && model.openrouterModel === input.openrouterModel))
+    const index = next.findIndex(model => model.id === modelId)
     if (index >= 0) next[index] = { ...next[index], ...entry }
     else next.push(entry)
     await deps.writeModels(input.route, next)

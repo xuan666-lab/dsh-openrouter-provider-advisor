@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, providerInsight, providerPriceLabel, estimatedSavings, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
+import { freshnessLabel, providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, providerInsight, providerPriceLabel, estimatedSavings, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
 import { createI18n } from '../src/client/i18n.js'
 import type { RecommendationResponse } from '../src/directory.js'
 
@@ -67,6 +67,13 @@ describe('provider panel view models', () => {
   it('labels cache-heavy pricing explicitly instead of using an ambiguous slash pair', () => {
     expect(providerPriceLabel(base, createI18n('zh-CN'))).toBe('输入 $0.13 · 输出 $0.28 · 缓存 $0.07 / M tokens')
     expect(providerPriceLabel(base, createI18n('en-US'))).toBe('Input $0.13 · Output $0.28 · Cache $0.07 / M tokens')
+  })
+
+  it('describes recommendation data freshness in whole minutes', () => {
+    const at = 1_700_000_000_000
+    expect(freshnessLabel(at, at + 30_000, createI18n('zh-CN'))).toBe('数据刚刚更新')
+    expect(freshnessLabel(at, at + 150_000, createI18n('zh-CN'))).toBe('数据更新于 2 分钟前')
+    expect(freshnessLabel(at, at + 150_000, createI18n('en-US'))).toBe('Updated 2 min ago')
   })
 
   it('estimates savings against the current provider using the cache-heavy traffic blend', () => {
