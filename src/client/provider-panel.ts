@@ -23,6 +23,9 @@ export interface ProviderRowView {
   scoreLabel: string
 }
 
+const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.06)', color: '#e4e4e7', cursor: 'pointer' }
+const iconButtonStyle: CSSProperties = { ...actionButtonStyle, width: 36, padding: 0, fontSize: 20, lineHeight: 1 }
+
 export const STRATEGY_OPTIONS: ReadonlyArray<{ id: RankingStrategy; labelKey: 'panel.strategy.balanced' | 'panel.strategy.price' | 'panel.strategy.speed' | 'panel.strategy.context' }> = [
   { id: 'balanced', labelKey: 'panel.strategy.balanced' },
   { id: 'price', labelKey: 'panel.strategy.price' },
@@ -144,8 +147,8 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
           ),
         ),
         createElement('div', { style: { display: 'flex', gap: 8 } },
-          createElement('button', { type: 'button', disabled: !credentialReady || !target.sessionId || state.status === 'loading' || state.status === 'applying', onClick: () => { if (target.sessionId) consume(props.store.refresh(target.sessionId)) } }, i18n.t('panel.refresh')),
-          createElement('button', { type: 'button', 'aria-label': i18n.t('panel.close'), onClick: () => props.store.close() }, '×'),
+          createElement('button', { type: 'button', title: i18n.t('panel.refresh'), 'aria-busy': state.status === 'loading', disabled: !credentialReady || !target.sessionId || state.status === 'loading' || state.status === 'applying', onClick: () => { if (target.sessionId) consume(props.store.refresh(target.sessionId)) }, style: { ...actionButtonStyle, opacity: state.status === 'loading' ? .6 : 1 } }, createElement('span', { 'aria-hidden': true, style: { display: 'inline-block', marginRight: 6 } }, '↻'), state.status === 'loading' ? i18n.t('panel.refreshing') : i18n.t('panel.refresh')),
+          createElement('button', { type: 'button', title: i18n.t('panel.close'), 'aria-label': i18n.t('panel.close'), onClick: () => props.store.close(), style: iconButtonStyle }, '×'),
         ),
       ),
       state.credential !== null && !state.credential.configured ? createElement('p', { role: 'status', style: { margin: '14px 22px 0', padding: 12, borderRadius: 8, color: '#fdba74', background: 'rgba(124,45,18,.28)', border: '1px solid rgba(249,115,22,.25)', fontSize: 13, lineHeight: 1.5 } }, i18n.t('panel.credentialMissing', { ref: state.credential.ref })) : null,
@@ -170,14 +173,17 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
             createElement('span', { style: { textAlign: 'right' } }, columns[2]),
             ))
           }
+          const switching = state.applyingTag === row.tag
+          const switched = state.successTag === row.tag
           nodes.push(createElement('button', {
             key: row.tag, type: 'button', disabled: row.current || state.status === 'applying',
             onClick: () => { if (target.sessionId) consume(props.store.apply(target.sessionId, row.tag)) },
-            style: { width: '100%', display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, alignItems: 'center', padding: '12px 14px', marginBottom: 6, borderRadius: 10, border: row.current ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,.08)', background: row.current ? 'rgba(37,99,235,.14)' : 'rgba(255,255,255,.035)', color: 'inherit', textAlign: 'left', cursor: row.current ? 'default' : 'pointer' },
+            title: row.current ? i18n.t('panel.current') : i18n.t('panel.switchAction'),
+            style: { width: '100%', display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, alignItems: 'center', padding: '12px 14px', marginBottom: 6, borderRadius: 10, border: row.current ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,.12)', background: row.current ? 'rgba(37,99,235,.14)' : 'rgba(255,255,255,.045)', color: 'inherit', textAlign: 'left', cursor: row.current ? 'default' : 'pointer', transition: 'background .15s ease,border-color .15s ease,transform .15s ease', opacity: state.status === 'applying' && !switching ? .55 : 1 },
           },
           createElement('strong', null, row.providerName),
           createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
-          createElement('span', { style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right' } }, row.scoreLabel),
+          createElement('span', { style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right' } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
           ))
           return nodes
         }),

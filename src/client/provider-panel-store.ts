@@ -10,6 +10,9 @@ export interface ProviderPanelSnapshot {
   selected: { provider: string; model: string; name?: string } | null
   strategy: RankingStrategy
   error: string | null
+  applyingTag: string | null
+  successTag: string | null
+  updatedAt: number | null
   credential: { configured: boolean; ref: string; source: 'provider' | 'fallback' } | null
 }
 
@@ -48,7 +51,7 @@ async function responseJson<T>(response: Response): Promise<T> {
 }
 
 export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): ProviderPanelStore {
-  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: 'balanced', error: null, credential: null }
+  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: 'balanced', error: null, credential: null, applyingTag: null, successTag: null, updatedAt: null }
   const listeners = new Set<() => void>()
   let generation = 0
   let controller: AbortController | null = null
@@ -76,11 +79,11 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
         : await fetchImpl(`/api/openrouter-providers/recommend?${new URLSearchParams({ sessionId, ...(selection ?? {}), strategy }).toString()}`, { signal: operation.signal })
       const data = await responseJson<RecommendationResponse>(response)
       if (operation.id !== generation) return
-      publish({ status: 'ready', data, error: null })
+      publish({ status: 'ready', data, error: null, updatedAt: Date.now() })
     } catch (error) {
       if (operation.id !== generation || operation.signal.aborted) return
       const message = error instanceof Error ? error.message : String(error)
-      publish({ status: 'error', data: null, error: message })
+      publish({ status: 'error', data: refresh ? snapshot.data : null, error: message })
       throw error
     }
   }
@@ -91,7 +94,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
     async toggle(sessionId) { if (snapshot.open) store.close(); else await store.open(sessionId) },
     async open(sessionId) {
       const operation = begin()
-      publish({ open: true, status: 'loading', sessionId, strategy: 'balanced', data: null, models: [], selected: null, credential: null, error: null })
+      publish({ open: true, status: 'loading', sessionId, strategy: 'balanced', data: null, models: [], selected: null, credential: null, error: null, applyingTag: null, successTag: null, updatedAt: null })
       try {
         const catalog = await responseJson<ModelCatalogResponse>(await fetchImpl(`/api/openrouter-providers/models?sessionId=${encodeURIComponent(sessionId)}`, { signal: operation.signal }))
         if (operation.id !== generation) return
@@ -125,17 +128,19 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
     },
     async apply(sessionId, tag) {
       const operation = begin()
-      publish({ open: true, status: 'applying', sessionId, error: null })
+      publish({ open: true, status: 'applying', sessionId, error: null, applyingTag: tag, successTag: null })
       try {
         await responseJson(await fetchImpl('/api/openrouter-providers/apply', {
           method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, tag, ...(snapshot.selected ?? {}), strategy: snapshot.strategy }), signal: operation.signal,
         }))
         if (operation.id !== generation) return
-        store.close()
+        const markCurrent = (row: RecommendationResponse['recommended'][number]) => ({ ...row, current: row.tag === tag })
+        const data = snapshot.data ? { ...snapshot.data, currentTag: tag, recommended: snapshot.data.recommended.map(markCurrent), rest: snapshot.data.rest.map(markCurrent) } : null
+        publish({ open: true, status: 'ready', data, applyingTag: null, successTag: tag, error: null })
       } catch (error) {
         if (operation.id !== generation || operation.signal.aborted) return
         const message = error instanceof Error ? error.message : String(error)
-        publish({ open: true, status: 'error', error: message })
+        publish({ open: true, status: 'error', error: message, applyingTag: null })
         throw error
       }
     },

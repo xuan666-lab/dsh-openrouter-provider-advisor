@@ -22,6 +22,10 @@ export type TranslationKey =
   | 'panel.switchHint'
   | 'panel.uptime'
   | 'panel.uptimeDelayHint'
+  | 'panel.refreshing'
+  | 'panel.switching'
+  | 'panel.switched'
+  | 'panel.switchAction'
   | 'panel.strategy.balanced'
   | 'panel.strategy.price'
   | 'panel.strategy.speed'
@@ -89,6 +93,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.switchHint': '点击供应商即可实时切换；当前会话与默认模型会立即更新。',
     'panel.uptime': '可用率',
     'panel.uptimeDelayHint': '可用率来自 OpenRouter 近 30 分钟统计，故障与恢复可能存在检测延迟。',
+    'panel.refreshing': '正在刷新',
+    'panel.switching': '正在切换…',
+    'panel.switched': '已切换',
+    'panel.switchAction': '切换',
     'panel.strategy.balanced': '综合最佳',
     'panel.strategy.price': '价格优先',
     'panel.strategy.speed': '速度优先',
@@ -155,6 +163,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.switchHint': 'Click a provider to switch immediately; the current session and default model update together.',
     'panel.uptime': 'uptime',
     'panel.uptimeDelayHint': 'Uptime comes from OpenRouter\'s trailing 30-minute statistics, so failures and recoveries may be detected with a delay.',
+    'panel.refreshing': 'Refreshing',
+    'panel.switching': 'Switching…',
+    'panel.switched': 'Switched',
+    'panel.switchAction': 'Switch',
     'panel.strategy.balanced': 'Best overall',
     'panel.strategy.price': 'Price first',
     'panel.strategy.speed': 'Speed first',
