@@ -15,6 +15,18 @@ export interface ProviderPanelSnapshot {
   updatedAt: number | null
   previousTag: string | null
   credential: { configured: boolean; ref: string; source: 'provider' | 'fallback' } | null
+  history: SwitchHistoryEntry[]
+}
+
+export interface SwitchHistoryEntry {
+  at: number
+  model: string
+  fromTag: string | null
+  fromName: string | null
+  fromTps: number | null
+  toTag: string
+  toName: string
+  toTps: number | null
 }
 
 export interface ConfiguredProviderModel {
@@ -51,8 +63,39 @@ async function responseJson<T>(response: Response): Promise<T> {
   return body
 }
 
-export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): ProviderPanelStore {
-  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: 'balanced', error: null, credential: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null }
+export type PanelStorage = Pick<Storage, 'getItem' | 'setItem'>
+
+const STRATEGY_KEY = 'openrouter-providers:strategy'
+const HISTORY_KEY = 'openrouter-providers:history'
+const HISTORY_LIMIT = 20
+const KNOWN_STRATEGIES: ReadonlySet<string> = new Set(['balanced', 'price', 'speed', 'context'])
+
+function defaultStorage(): PanelStorage | undefined {
+  try { return globalThis.localStorage } catch { return undefined }
+}
+
+function readStrategy(storage: PanelStorage | undefined): RankingStrategy {
+  try {
+    const value = storage?.getItem(STRATEGY_KEY)
+    return value !== null && value !== undefined && KNOWN_STRATEGIES.has(value) ? value as RankingStrategy : 'balanced'
+  } catch { return 'balanced' }
+}
+
+function readHistory(storage: PanelStorage | undefined): SwitchHistoryEntry[] {
+  try {
+    const parsed = JSON.parse(storage?.getItem(HISTORY_KEY) ?? '[]') as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((item): item is SwitchHistoryEntry => Boolean(item && typeof item === 'object'
+        && typeof (item as SwitchHistoryEntry).at === 'number'
+        && typeof (item as SwitchHistoryEntry).model === 'string'
+        && typeof (item as SwitchHistoryEntry).toTag === 'string'))
+      .slice(0, HISTORY_LIMIT)
+  } catch { return [] }
+}
+
+export function createProviderPanelStore(fetchImpl: typeof fetch = fetch, storage: PanelStorage | undefined = defaultStorage()): ProviderPanelStore {
+  let snapshot: ProviderPanelSnapshot = { open: false, status: 'idle', sessionId: null, data: null, models: [], selected: null, strategy: readStrategy(storage), error: null, credential: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null, history: readHistory(storage) }
   const listeners = new Set<() => void>()
   let generation = 0
   let controller: AbortController | null = null
@@ -95,7 +138,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
     async toggle(sessionId) { if (snapshot.open) store.close(); else await store.open(sessionId) },
     async open(sessionId) {
       const operation = begin()
-      publish({ open: true, status: 'loading', sessionId, strategy: 'balanced', data: null, models: [], selected: null, credential: null, error: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null })
+      publish({ open: true, status: 'loading', sessionId, data: null, models: [], selected: null, credential: null, error: null, applyingTag: null, successTag: null, updatedAt: null, previousTag: null })
       try {
         const catalog = await responseJson<ModelCatalogResponse>(await fetchImpl(`/api/openrouter-providers/models?sessionId=${encodeURIComponent(sessionId)}`, { signal: operation.signal }))
         if (operation.id !== generation) return
@@ -108,7 +151,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
           publish({ status: 'ready', data: null, error: null })
           return
         }
-        await load(sessionId, false, selected, 'balanced')
+        await load(sessionId, false, selected)
       } catch (error) {
         if (operation.id !== generation || operation.signal.aborted) return
         const message = error instanceof Error ? error.message : String(error)
@@ -116,7 +159,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
         throw error
       }
     },
-    close() { controller?.abort(); controller = null; generation += 1; publish({ open: false, status: snapshot.data ? 'ready' : 'idle', strategy: 'balanced', error: null }) },
+    close() { controller?.abort(); controller = null; generation += 1; publish({ open: false, status: snapshot.data ? 'ready' : 'idle', error: null }) },
     refresh: sessionId => load(sessionId, true),
     async selectModel(sessionId, provider, model, name) {
       const selected = { provider, model, name }
@@ -124,6 +167,7 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
       await load(sessionId, false, selected)
     },
     async setStrategy(sessionId, strategy) {
+      try { storage?.setItem(STRATEGY_KEY, strategy) } catch { /* per-viewer convenience only */ }
       publish({ strategy })
       await load(sessionId, false, snapshot.selected, strategy)
     },
@@ -138,7 +182,19 @@ export function createProviderPanelStore(fetchImpl: typeof fetch = fetch): Provi
         if (operation.id !== generation) return
         const markCurrent = (row: RecommendationResponse['recommended'][number]) => ({ ...row, current: row.tag === tag })
         const data = snapshot.data ? { ...snapshot.data, currentTag: tag, recommended: snapshot.data.recommended.map(markCurrent), rest: snapshot.data.rest.map(markCurrent) } : null
-        publish({ open: true, status: 'ready', data, applyingTag: null, successTag: tag, previousTag: previousTag === tag ? snapshot.previousTag : previousTag, error: null })
+        let history = snapshot.history
+        if (snapshot.data && previousTag !== tag) {
+          const rows = [...snapshot.data.recommended, ...snapshot.data.rest]
+          const fromRow = previousTag === null ? undefined : rows.find(row => row.tag === previousTag)
+          const toRow = rows.find(row => row.tag === tag)
+          history = [{
+            at: Date.now(), model: snapshot.data.openrouterModel,
+            fromTag: previousTag, fromName: fromRow?.providerName ?? null, fromTps: fromRow?.tps ?? null,
+            toTag: tag, toName: toRow?.providerName ?? tag, toTps: toRow?.tps ?? null,
+          }, ...snapshot.history].slice(0, HISTORY_LIMIT)
+          try { storage?.setItem(HISTORY_KEY, JSON.stringify(history)) } catch { /* per-viewer convenience only */ }
+        }
+        publish({ open: true, status: 'ready', data, history, applyingTag: null, successTag: tag, previousTag: previousTag === tag ? snapshot.previousTag : previousTag, error: null })
       } catch (error) {
         if (operation.id !== generation || operation.signal.aborted) return
         const message = error instanceof Error ? error.message : String(error)

@@ -106,11 +106,8 @@ describe('ProviderPanelStore', () => {
     expect(store.getSnapshot()).toMatchObject({ selected: { provider: 'openrouter-main', model: '@preset/deepseek-v4-pro-deepinfra', name: 'deepseek DeepSeek V4 Pro · DeepInfra' }, data: { openrouterModel: 'deepseek/deepseek-v4-pro' } })
   })
 
-  it('defaults to balanced, reloads for a selected strategy, and resets on close', async () => {
-    const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
-      .mockResolvedValueOnce(new Response(JSON.stringify(modelCatalog), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(recommendation), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(recommendation), { status: 200 }))
+  it('defaults to balanced, reloads for a selected strategy, and keeps it across close and reopen', async () => {
+    const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async input => new Response(JSON.stringify(String(input).includes('/models') ? modelCatalog : recommendation), { status: 200 }))
     const store = createProviderPanelStore(fetch)
     await store.open('s1')
     expect(store.getSnapshot().strategy).toBe('balanced')
@@ -118,6 +115,33 @@ describe('ProviderPanelStore', () => {
     expect(String(fetch.mock.calls[2]![0])).toContain('strategy=price')
     expect(store.getSnapshot().strategy).toBe('price')
     store.close()
-    expect(store.getSnapshot().strategy).toBe('balanced')
+    expect(store.getSnapshot().strategy).toBe('price')
+    await store.open('s1')
+    expect(String(fetch.mock.calls[4]![0])).toContain('strategy=price')
+  })
+
+  it('persists the preferred strategy so a fresh store restores it', async () => {
+    const backing = new Map<string, string>()
+    const storage = { getItem: (key: string) => backing.get(key) ?? null, setItem: (key: string, value: string) => void backing.set(key, value) }
+    const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () => new Response(JSON.stringify(recommendation), { status: 200 }))
+    const store = createProviderPanelStore(fetch, storage)
+    await store.setStrategy('s1', 'speed')
+    expect(createProviderPanelStore(fetch, storage).getSnapshot().strategy).toBe('speed')
+  })
+
+  it('records a switch history entry with provider names and throughput, persisted to storage', async () => {
+    const backing = new Map<string, string>()
+    const storage = { getItem: (key: string) => backing.get(key) ?? null, setItem: (key: string, value: string) => void backing.set(key, value) }
+    const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(new Response(JSON.stringify(modelCatalog), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...recommendation, rest: [{ ...recommendation.recommended[0], rank: 2, tag: 'deepinfra/fp8', providerName: 'DeepInfra', tps: 86, current: true }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    const store = createProviderPanelStore(fetch, storage)
+    await store.open('s1')
+    await store.apply('s1', 'coreweave/fp8')
+    const entry = store.getSnapshot().history[0]
+    expect(entry).toMatchObject({ model: 'deepseek/deepseek-v4', fromTag: 'deepinfra/fp8', fromName: 'DeepInfra', fromTps: 86, toTag: 'coreweave/fp8', toName: 'CoreWeave', toTps: 101 })
+    const restored = createProviderPanelStore(fetch, storage)
+    expect(restored.getSnapshot().history[0]).toMatchObject({ toTag: 'coreweave/fp8' })
   })
 })
