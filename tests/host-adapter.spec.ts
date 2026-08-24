@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CONFIG } from '../src/config.js'
 import { createHostController } from '../src/host-adapter.js'
 
 describe('host apiProxy adapter', () => {
+  // createHostController builds its own OpenRouterClient, so an unstubbed fetch would
+  // reach the live catalog endpoint and make these adapter assertions network-dependent.
+  beforeEach(() => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }))))
+  afterEach(() => vi.unstubAllGlobals())
+
   it('wraps session domain calls in RpcRequest payloads', async () => {
     const models = vi.fn(async () => ({ result: { ok: true as const, value: { current: { provider: 'local', model: 'x' } } } }))
     const selectModel = vi.fn(async () => ({ result: { ok: true as const, value: { selected: { provider: 'local', model: 'x' } } } }))
