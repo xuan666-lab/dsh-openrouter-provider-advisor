@@ -1,23 +1,45 @@
 {
   "name": "dsh-openrouter-provider-advisor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH web plugin that ranks OpenRouter upstream providers by quality, speed, cache-heavy price, context, and uptime, then safely switches the active route.",
-  "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "openrouter", "provider-routing", "typescript"],
-  "repository": { "type": "git", "url": "git+https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor.git" },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "openrouter",
+    "provider-routing",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor.git"
+  },
   "homepage": "https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor#readme",
-  "bugs": { "url": "https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor/issues" },
-  "publishConfig": { "access": "public" },
+  "bugs": {
+    "url": "https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
-    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
-    "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" },
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "inject": [
@@ -71,7 +93,19 @@
     "typescript": "^5.9.2",
     "vitest": "^4.1.8"
   },
-  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "license": "MIT",
-  "files": ["lib/**/*.js", "lib/types/**/*.d.ts", "cordis.patch.yml", "dsh.plugin.json", "README.md", "README_EN.md", "docs/images/*.png", "LICENSE"]
+  "files": [
+    "lib/**/*.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml",
+    "dsh.plugin.json",
+    "README.md",
+    "README_EN.md",
+    "CHANGELOG.md",
+    "docs/images/*.png",
+    "LICENSE"
+  ]
 }
