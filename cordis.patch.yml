@@ -1,0 +1,4 @@
+- insert:
+    - id: openrouter-providers
+      name: dsh-openrouter-provider-advisor
+      config: {}

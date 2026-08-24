@@ -1,0 +1,16 @@
+{
+  "id": "dsh-external/dsh-openrouter-provider-advisor",
+  "version": "0.1.0",
+  "main": "./lib/index.js",
+  "description": "OpenRouter 供应商推荐与安全切换：按质量、速度、缓存价格、上下文和可用率排序",
+  "engines": {
+    "dsh": ">=0.1.1-rc.2"
+  },
+  "contributes": {
+    "tools": ["recommend_openrouter_providers", "switch_openrouter_provider"],
+    "skills": []
+  },
+  "client": {
+    "main": "./lib/client.js"
+  }
+}
