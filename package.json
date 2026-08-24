@@ -1,6 +1,6 @@
 {
   "name": "dsh-openrouter-provider-advisor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "DSH web plugin that ranks OpenRouter upstream providers by quality, speed, cache-heavy price, context, and uptime, then safely switches the active route.",
   "keywords": [
     "deepseek-harness",
