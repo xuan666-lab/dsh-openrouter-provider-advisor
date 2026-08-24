@@ -24,6 +24,7 @@ export interface ProviderRowView {
   scoreLabel: string
   badge: string
   breakdown: string
+  priceLabel: string
 }
 
 const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.06)', color: '#e4e4e7', cursor: 'pointer' }
@@ -43,6 +44,10 @@ export function providerInsight(row: RankedProvider, i18n = createI18n('zh-CN'))
   }
 }
 
+export function providerPriceLabel(row: Pick<RankedProvider, 'price'>, i18n = createI18n('zh-CN')): string {
+  return `${i18n.t('panel.price.input')} $${row.price.input} · ${i18n.t('panel.price.output')} $${row.price.output} · ${i18n.t('panel.price.cache')} $${row.price.cache} / M tokens`
+}
+
 export const STRATEGY_OPTIONS: ReadonlyArray<{ id: RankingStrategy; labelKey: 'panel.strategy.balanced' | 'panel.strategy.price' | 'panel.strategy.speed' | 'panel.strategy.context' }> = [
   { id: 'balanced', labelKey: 'panel.strategy.balanced' },
   { id: 'price', labelKey: 'panel.strategy.price' },
@@ -57,7 +62,8 @@ export function providerRows(data: RecommendationResponse, i18n = createI18n('zh
     providerName: row.providerName,
     current: row.current,
     score: row.score,
-    detail: `${row.quantization} · ${row.tps} t/s · $${row.price.input}/$${row.price.output} · ${row.contextLength.toLocaleString()} ctx · ${row.uptime === null ? 'N/A' : `${row.uptime.toFixed(2)}%`} ${i18n.t('panel.uptime')}`,
+    detail: `${row.quantization} · ${row.tps} t/s · ${row.contextLength.toLocaleString()} ctx · ${row.uptime === null ? 'N/A' : `${row.uptime.toFixed(2)}%`} ${i18n.t('panel.uptime')}`,
+    priceLabel: providerPriceLabel(row, i18n),
     scoreLabel: row.current ? `${i18n.t('panel.current')} · ${row.score.toFixed(1)}` : row.score.toFixed(1),
     ...providerInsight(row, i18n),
   })
@@ -136,13 +142,13 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
   let lastGroup: string | null = null
   return createElement('div', { style: backdrop, role: 'presentation', onMouseDown: (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) props.store.close() } },
     createElement('section', { role: 'dialog', 'aria-modal': true, 'aria-label': i18n.t('panel.title'), style: panelStyle },
-      createElement('header', { style: { display: 'flex', alignItems: 'start', justifyContent: 'space-between', padding: '20px 22px 16px', borderBottom: '1px solid rgba(255,255,255,.1)' } },
-        createElement('div', null,
+      createElement('header', { style: { display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: 16, padding: '18px 22px 14px', borderBottom: '1px solid rgba(255,255,255,.1)' } },
+        createElement('div', { style: { minWidth: 0, flex: 1 } },
           createElement('h2', { style: { margin: 0, fontSize: 20 } }, i18n.t('panel.title')),
-          createElement('p', { style: { margin: '6px 0 10px', color: '#a1a1aa', fontSize: 13 } }, state.data ? state.data.openrouterModel : i18n.t('panel.currentModelLoading')),
+          createElement('label', { style: { display: 'block', margin: '10px 0 5px', color: '#71717a', fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' } }, i18n.t('panel.currentModel')),
           createElement('select', {
             'aria-label': i18n.t('panel.modelSelect'), value: selectedValue, disabled: !credentialReady || state.models.length === 0 || state.status === 'applying',
-            style: { minWidth: 300, maxWidth: 'min(460px, 60vw)', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,.16)', background: '#27272a', color: '#f4f4f5' },
+            style: { width: 'min(420px, 100%)', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,.16)', background: '#27272a', color: '#f4f4f5' },
             onChange: (event: { currentTarget: { value: string } }) => {
               if (!target.sessionId) return
               const [provider, model] = JSON.parse(event.currentTarget.value) as [string, string]
@@ -152,14 +158,15 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
           }, ...state.models.map(model => createElement('option', {
             key: `${model.provider}\0${model.model}`, value: JSON.stringify([model.provider, model.model]),
           }, `${model.name}${model.current ? ` (${i18n.t('panel.current')})` : ''}`))),
-          createElement('div', { role: 'group', 'aria-label': i18n.t('panel.strategyGroup'), style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, width: 'min(560px, 70vw)', marginTop: 12, padding: 4, borderRadius: 10, background: 'rgba(255,255,255,.05)' } },
+          createElement('div', { role: 'group', 'aria-label': i18n.t('panel.strategyGroup'), style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 3, width: 'min(520px, 100%)', marginTop: 10, padding: 3, borderRadius: 9, background: 'rgba(255,255,255,.05)' } },
             ...STRATEGY_OPTIONS.map(option => {
               const active = state.strategy === option.id
               return createElement('button', {
                 key: option.id, type: 'button', 'aria-pressed': active,
                 disabled: !credentialReady || state.status === 'loading' || state.status === 'applying',
                 onClick: () => { if (target.sessionId && !active) consume(props.store.setStrategy(target.sessionId, option.id)) },
-                style: { border: active ? '1px solid #3b82f6' : '1px solid transparent', borderRadius: 7, padding: '7px 10px', background: active ? 'rgba(37,99,235,.2)' : 'transparent', color: active ? '#93c5fd' : '#d4d4d8', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap' },
+                title: i18n.t(option.labelKey),
+                style: { minHeight: 38, border: active ? '1px solid #3b82f6' : '1px solid transparent', borderRadius: 6, padding: '5px 8px', background: active ? 'rgba(37,99,235,.15)' : 'transparent', color: active ? '#93c5fd' : '#d4d4d8', cursor: active ? 'default' : 'pointer', whiteSpace: 'nowrap', fontSize: 12 },
               }, i18n.t(option.labelKey))
             }),
           ),
@@ -203,7 +210,10 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
             createElement('strong', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, row.providerName),
             createElement('small', { style: { flex: '0 0 auto', padding: '2px 6px', borderRadius: 999, color: '#a5b4fc', background: 'rgba(99,102,241,.13)', fontSize: 9, fontWeight: 600 } }, row.badge),
           ),
-          createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
+          createElement('span', { style: { display: 'grid', gap: 3, minWidth: 0 } },
+            createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
+            createElement('span', { title: row.priceLabel, style: { color: '#d4d4d8', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.priceLabel),
+          ),
           createElement('span', { title: row.breakdown, 'aria-label': `${row.scoreLabel}; ${row.breakdown}`, style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right', textDecoration: 'underline dotted rgba(161,161,170,.6)', textUnderlineOffset: 3 } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
           ))
           return nodes

@@ -30,6 +30,10 @@ export type TranslationKey =
   | 'panel.insight.speed'
   | 'panel.insight.price'
   | 'panel.insight.context'
+  | 'panel.currentModel'
+  | 'panel.price.input'
+  | 'panel.price.output'
+  | 'panel.price.cache'
   | 'panel.strategy.balanced'
   | 'panel.strategy.price'
   | 'panel.strategy.speed'
@@ -90,7 +94,7 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.group.recommended': '推荐 Top 5',
     'panel.group.rest': '其他合格供应商',
     'panel.column.provider': '供应商',
-    'panel.column.details': '规格详情',
+    'panel.column.details': '性能与价格',
     'panel.column.score': '分数',
     'panel.current': '当前',
     'panel.credentialMissing': '未检测到 OpenRouter 凭据“{ref}”。请前往 DSH 设置 → 模型完成配置；推荐、刷新和供应商切换暂不可用。',
@@ -105,6 +109,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.insight.speed': '速度突出',
     'panel.insight.price': '价格突出',
     'panel.insight.context': '上下文突出',
+    'panel.currentModel': '当前模型',
+    'panel.price.input': '输入',
+    'panel.price.output': '输出',
+    'panel.price.cache': '缓存',
     'panel.strategy.balanced': '综合最佳',
     'panel.strategy.price': '价格优先',
     'panel.strategy.speed': '速度优先',
@@ -164,7 +172,7 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.group.recommended': 'Top 5 Recommendations',
     'panel.group.rest': 'Other Eligible Providers',
     'panel.column.provider': 'Provider',
-    'panel.column.details': 'Specs & Performance',
+    'panel.column.details': 'Performance & price',
     'panel.column.score': 'Score',
     'panel.current': 'Current',
     'panel.credentialMissing': 'OpenRouter credential “{ref}” is not configured. Configure it in DSH Settings → Models; recommendations, refresh, and provider switching are disabled for now.',
@@ -179,6 +187,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.insight.speed': 'Speed strength',
     'panel.insight.price': 'Price strength',
     'panel.insight.context': 'Context strength',
+    'panel.currentModel': 'Current model',
+    'panel.price.input': 'Input',
+    'panel.price.output': 'Output',
+    'panel.price.cache': 'Cache',
     'panel.strategy.balanced': 'Best overall',
     'panel.strategy.price': 'Price first',
     'panel.strategy.speed': 'Speed first',

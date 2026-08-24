@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, providerInsight, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
+import { providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, providerInsight, providerPriceLabel, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
 import { createI18n } from '../src/client/i18n.js'
 import type { RecommendationResponse } from '../src/directory.js'
 
@@ -31,8 +31,8 @@ describe('provider panel view models', () => {
   })
 
   it('exposes localized table columns for the provider list header', () => {
-    expect(providerTableColumns(createI18n('zh-CN'))).toEqual(['供应商', '规格详情', '分数'])
-    expect(providerTableColumns(createI18n('en-US'))).toEqual(['Provider', 'Specs & Performance', 'Score'])
+    expect(providerTableColumns(createI18n('zh-CN'))).toEqual(['供应商', '性能与价格', '分数'])
+    expect(providerTableColumns(createI18n('en-US'))).toEqual(['Provider', 'Performance & price', 'Score'])
   })
 
   it('disables the trigger without an ordinary current session', () => {
@@ -62,5 +62,10 @@ describe('provider panel view models', () => {
     expect(insight.breakdown).toContain('速度 100')
     expect(insight.breakdown).toContain('价格 80')
     expect(insight.breakdown).toContain('上下文 17')
+  })
+
+  it('labels cache-heavy pricing explicitly instead of using an ambiguous slash pair', () => {
+    expect(providerPriceLabel(base, createI18n('zh-CN'))).toBe('输入 $0.13 · 输出 $0.28 · 缓存 $0.07 / M tokens')
+    expect(providerPriceLabel(base, createI18n('en-US'))).toBe('Input $0.13 · Output $0.28 · Cache $0.07 / M tokens')
   })
 })
