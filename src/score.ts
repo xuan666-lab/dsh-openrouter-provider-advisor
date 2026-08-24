@@ -31,13 +31,17 @@ function round(value: number, digits = 2): number {
 }
 
 export function uptimeMultiplier(uptime: number | null, config: Config): number {
-  const safety = uptime === null ? 0.7
-    : uptime >= 99.5 ? 1
-      : uptime >= 99 ? 0.85
-        : uptime >= 97 ? 0.6
-          : uptime >= 90 ? 0.3
-            : 0.05
-  const configured = uptime !== null && uptime < config.uptimePenaltyThreshold ? config.uptimePenaltyFactor : 1
+  if (uptime === null) return 0.85
+  const interpolate = (value: number, low: number, high: number, lowScore: number, highScore: number): number =>
+    lowScore + (highScore - lowScore) * (value - low) / (high - low)
+  const safety = uptime >= 99.5 ? 1
+    : uptime >= 99 ? interpolate(uptime, 99, 99.5, 0.97, 1)
+      : uptime >= 98 ? interpolate(uptime, 98, 99, 0.9, 0.97)
+        : uptime >= 95 ? interpolate(uptime, 95, 98, 0.75, 0.9)
+          : uptime >= 90 ? interpolate(uptime, 90, 95, 0.5, 0.75)
+            : interpolate(Math.max(0, uptime), 0, 90, 0.1, 0.5)
+  const configured = uptime >= config.uptimePenaltyThreshold ? 1
+    : interpolate(Math.max(config.uptimePenaltyThreshold - 5, uptime), config.uptimePenaltyThreshold - 5, config.uptimePenaltyThreshold, config.uptimePenaltyFactor, 1)
   return Math.min(safety, configured)
 }
 

@@ -4,23 +4,25 @@ import { rankEndpoints, uptimeMultiplier } from '../src/score.js'
 import { endpoints } from './fixtures/endpoints.js'
 
 describe('rankEndpoints', () => {
-  it('applies non-bypassable reliability safety bands', () => {
+  it('applies a continuous, mild reliability curve before strongly penalizing outages', () => {
     expect(uptimeMultiplier(99.95, DEFAULT_CONFIG)).toBe(1)
     expect(uptimeMultiplier(99.6, DEFAULT_CONFIG)).toBe(1)
-    expect(uptimeMultiplier(99.48, DEFAULT_CONFIG)).toBe(0.85)
-    expect(uptimeMultiplier(98.9, DEFAULT_CONFIG)).toBe(0.6)
-    expect(uptimeMultiplier(95, DEFAULT_CONFIG)).toBe(0.3)
-    expect(uptimeMultiplier(80, DEFAULT_CONFIG)).toBe(0.05)
-    expect(uptimeMultiplier(null, DEFAULT_CONFIG)).toBe(0.7)
-    expect(uptimeMultiplier(99.95, { ...DEFAULT_CONFIG, uptimePenaltyThreshold: 100, uptimePenaltyFactor: 0.2 })).toBe(0.2)
+    expect(uptimeMultiplier(99.48, DEFAULT_CONFIG)).toBeCloseTo(0.9988, 4)
+    expect(uptimeMultiplier(98.9, DEFAULT_CONFIG)).toBeCloseTo(0.963, 3)
+    expect(uptimeMultiplier(98.25, DEFAULT_CONFIG)).toBeCloseTo(0.9175, 4)
+    expect(uptimeMultiplier(95, DEFAULT_CONFIG)).toBe(0.75)
+    expect(uptimeMultiplier(90, DEFAULT_CONFIG)).toBe(0.5)
+    expect(uptimeMultiplier(80, DEFAULT_CONFIG)).toBeCloseTo(0.4556, 4)
+    expect(uptimeMultiplier(null, DEFAULT_CONFIG)).toBe(0.85)
+    expect(uptimeMultiplier(99.95, { ...DEFAULT_CONFIG, uptimePenaltyThreshold: 100, uptimePenaltyFactor: 0.2 })).toBeCloseTo(0.992, 3)
   })
 
-  it('moderately discounts a provider just below 99.5 percent uptime', () => {
+  it('does not create a ranking cliff around 99.5 percent uptime', () => {
     const degraded = { ...endpoints[1]!, provider_name: 'Degraded', tag: 'degraded/fp8', uptime_last_30m: 99.48 }
     const healthy = { ...degraded, provider_name: 'Healthy', tag: 'healthy/fp8', uptime_last_30m: 99.95 }
     const degradedScore = rankEndpoints([degraded], DEFAULT_CONFIG).recommended[0]!.score
     const healthyScore = rankEndpoints([healthy], DEFAULT_CONFIG).recommended[0]!.score
-    expect(degradedScore).toBeCloseTo(healthyScore * 0.85, 1)
+    expect(degradedScore).toBeGreaterThan(healthyScore * 0.99)
   })
   it('filters unavailable and short endpoints without padding recommendations', () => {
     const result = rankEndpoints(endpoints, DEFAULT_CONFIG)
