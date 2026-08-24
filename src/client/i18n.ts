@@ -26,6 +26,10 @@ export type TranslationKey =
   | 'panel.switching'
   | 'panel.switched'
   | 'panel.switchAction'
+  | 'panel.insight.quantization'
+  | 'panel.insight.speed'
+  | 'panel.insight.price'
+  | 'panel.insight.context'
   | 'panel.strategy.balanced'
   | 'panel.strategy.price'
   | 'panel.strategy.speed'
@@ -97,6 +101,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.switching': '正在切换…',
     'panel.switched': '已切换',
     'panel.switchAction': '切换',
+    'panel.insight.quantization': '量化突出',
+    'panel.insight.speed': '速度突出',
+    'panel.insight.price': '价格突出',
+    'panel.insight.context': '上下文突出',
     'panel.strategy.balanced': '综合最佳',
     'panel.strategy.price': '价格优先',
     'panel.strategy.speed': '速度优先',
@@ -167,6 +175,10 @@ const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
     'panel.switching': 'Switching…',
     'panel.switched': 'Switched',
     'panel.switchAction': 'Switch',
+    'panel.insight.quantization': 'Quality strength',
+    'panel.insight.speed': 'Speed strength',
+    'panel.insight.price': 'Price strength',
+    'panel.insight.context': 'Context strength',
     'panel.strategy.balanced': 'Best overall',
     'panel.strategy.price': 'Price first',
     'panel.strategy.speed': 'Speed first',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
+import { providerRows, providerTableColumns, providerTriggerLayout, providerTriggerState, providerInsight, STRATEGY_OPTIONS } from '../src/client/provider-panel.js'
 import { createI18n } from '../src/client/i18n.js'
 import type { RecommendationResponse } from '../src/directory.js'
 
@@ -53,5 +53,14 @@ describe('provider panel view models', () => {
       ['speed', 'panel.strategy.speed'],
       ['context', 'panel.strategy.context'],
     ])
+  })
+
+  it('explains the strongest ranking dimension and exposes score breakdown', () => {
+    const insight = providerInsight(base, createI18n('zh-CN'))
+    expect(insight.badge).toBe('速度突出')
+    expect(insight.breakdown).toContain('量化 80')
+    expect(insight.breakdown).toContain('速度 100')
+    expect(insight.breakdown).toContain('价格 80')
+    expect(insight.breakdown).toContain('上下文 17')
   })
 })

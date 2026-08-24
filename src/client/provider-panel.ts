@@ -1,5 +1,6 @@
 import { createElement, Fragment, useEffect, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import type { RecommendationResponse } from '../directory.js'
+import type { RankedProvider } from '../types.js'
 import type { RankingStrategy } from '../config.js'
 import type { ProviderPanelStore } from './provider-panel-store.js'
 import { createI18n, useUiI18n } from './i18n.js'
@@ -21,10 +22,26 @@ export interface ProviderRowView {
   detail: string
   score: number
   scoreLabel: string
+  badge: string
+  breakdown: string
 }
 
 const actionButtonStyle: CSSProperties = { height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(255,255,255,.06)', color: '#e4e4e7', cursor: 'pointer' }
 const iconButtonStyle: CSSProperties = { ...actionButtonStyle, width: 36, padding: 0, fontSize: 20, lineHeight: 1 }
+
+export function providerInsight(row: RankedProvider, i18n = createI18n('zh-CN')): { badge: string; breakdown: string } {
+  const entries = [
+    ['quantization', row.dimensions.quantization, i18n.t('settings.dimension.quantization')],
+    ['speed', row.dimensions.speed, i18n.t('settings.dimension.speed')],
+    ['price', row.dimensions.price, i18n.t('settings.dimension.price')],
+    ['context', row.dimensions.context, i18n.t('settings.dimension.context')],
+  ] as const
+  const strongest = entries.reduce((best, item) => item[1] > best[1] ? item : best)
+  return {
+    badge: i18n.t(`panel.insight.${strongest[0]}`),
+    breakdown: entries.map(([, value, label]) => `${label} ${Math.round(value)}`).join(' · '),
+  }
+}
 
 export const STRATEGY_OPTIONS: ReadonlyArray<{ id: RankingStrategy; labelKey: 'panel.strategy.balanced' | 'panel.strategy.price' | 'panel.strategy.speed' | 'panel.strategy.context' }> = [
   { id: 'balanced', labelKey: 'panel.strategy.balanced' },
@@ -42,6 +59,7 @@ export function providerRows(data: RecommendationResponse, i18n = createI18n('zh
     score: row.score,
     detail: `${row.quantization} · ${row.tps} t/s · $${row.price.input}/$${row.price.output} · ${row.contextLength.toLocaleString()} ctx · ${row.uptime === null ? 'N/A' : `${row.uptime.toFixed(2)}%`} ${i18n.t('panel.uptime')}`,
     scoreLabel: row.current ? `${i18n.t('panel.current')} · ${row.score.toFixed(1)}` : row.score.toFixed(1),
+    ...providerInsight(row, i18n),
   })
   return [...data.recommended.map(map(i18n.t('panel.group.recommended'))), ...data.rest.map(map(i18n.t('panel.group.rest')))]
 }
@@ -181,9 +199,12 @@ export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelS
             title: row.current ? i18n.t('panel.current') : i18n.t('panel.switchAction'),
             style: { width: '100%', display: 'grid', gridTemplateColumns: providerGridColumns, gap: 14, alignItems: 'center', padding: '12px 14px', marginBottom: 6, borderRadius: 10, border: row.current ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,.12)', background: row.current ? 'rgba(37,99,235,.14)' : 'rgba(255,255,255,.045)', color: 'inherit', textAlign: 'left', cursor: row.current ? 'default' : 'pointer', transition: 'background .15s ease,border-color .15s ease,transform .15s ease', opacity: state.status === 'applying' && !switching ? .55 : 1 },
           },
-          createElement('strong', null, row.providerName),
+          createElement('span', { style: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 } },
+            createElement('strong', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, row.providerName),
+            createElement('small', { style: { flex: '0 0 auto', padding: '2px 6px', borderRadius: 999, color: '#a5b4fc', background: 'rgba(99,102,241,.13)', fontSize: 9, fontWeight: 600 } }, row.badge),
+          ),
           createElement('span', { title: row.detail, style: { color: '#a1a1aa', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.detail),
-          createElement('span', { style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right' } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
+          createElement('span', { title: row.breakdown, 'aria-label': `${row.scoreLabel}; ${row.breakdown}`, style: { color: row.current ? '#60a5fa' : '#d4d4d8', fontSize: 12, textAlign: 'right', textDecoration: 'underline dotted rgba(161,161,170,.6)', textUnderlineOffset: 3 } }, switching ? i18n.t('panel.switching') : switched ? i18n.t('panel.switched') : row.scoreLabel),
           ))
           return nodes
         }),
