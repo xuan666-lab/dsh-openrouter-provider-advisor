@@ -114,7 +114,7 @@ Only official OpenRouter APIs are used: `/models`, `/models/{id}/endpoints`, and
 ## Development
 
 ```bash
-git clone https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor.git
+git clone https://github.com/xuan666-lab/dsh-openrouter-provider-advisor.git
 cd dsh-openrouter-provider-advisor
 npm install
 npm run verify

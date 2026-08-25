@@ -21,22 +21,24 @@
    git tag -a v<version> -m "v<version>"
    ```
 
-3. 推送到 `xuanfengtechx`。本机存在多个 GitHub 账号时，不要依赖默认 SSH key 或系统 HTTPS 凭据；显式读取该账号的 `gh` token，仅以内存变量传给本次 Git 命令：
+3. 推送到 `xuan666-lab`（原账号名 `xuanfengtechx`）。本机存在多个 GitHub 账号时，不要依赖默认 SSH key 或系统 HTTPS 凭据；读取当前激活的 `gh` token，校验实际登录名后，仅以内存变量传给本次 Git 命令：
 
    ```bash
-   XUANFENG_GH_TOKEN=$(env -u GH_TOKEN -u GITHUB_TOKEN gh auth token --hostname github.com --user xuanfengtechx)
-   XUANFENG_GH_BASIC=$(printf 'x-access-token:%s' "$XUANFENG_GH_TOKEN" | base64)
-   git -c credential.helper= -c http.https://github.com/.extraheader="AUTHORIZATION: basic $XUANFENG_GH_BASIC" push origin main
-   git -c credential.helper= -c http.https://github.com/.extraheader="AUTHORIZATION: basic $XUANFENG_GH_BASIC" push origin v<version>
-   unset XUANFENG_GH_TOKEN XUANFENG_GH_BASIC
+   XUAN666_GH_TOKEN=$(env -u GH_TOKEN -u GITHUB_TOKEN gh auth token --hostname github.com)
+   test "$(GH_TOKEN="$XUAN666_GH_TOKEN" gh api user --jq .login)" = "xuan666-lab"
+   XUAN666_GH_BASIC=$(printf 'x-access-token:%s' "$XUAN666_GH_TOKEN" | base64)
+   git -c credential.helper= -c http.https://github.com/.extraheader="AUTHORIZATION: basic $XUAN666_GH_BASIC" push origin main
+   git -c credential.helper= -c http.https://github.com/.extraheader="AUTHORIZATION: basic $XUAN666_GH_BASIC" push origin v<version>
+   unset XUAN666_GH_TOKEN XUAN666_GH_BASIC
    ```
 
 4. 使用同一 GitHub 账号创建 Release，release notes 概括功能变化、修复和验证结果：
 
    ```bash
-   XUANFENG_GH_TOKEN=$(env -u GH_TOKEN -u GITHUB_TOKEN gh auth token --hostname github.com --user xuanfengtechx)
-   GH_TOKEN="$XUANFENG_GH_TOKEN" gh release create v<version> --repo xuanfengtechx/dsh-openrouter-provider-advisor --title "v<version>" --notes "<release notes>"
-   unset XUANFENG_GH_TOKEN
+   XUAN666_GH_TOKEN=$(env -u GH_TOKEN -u GITHUB_TOKEN gh auth token --hostname github.com)
+   test "$(GH_TOKEN="$XUAN666_GH_TOKEN" gh api user --jq .login)" = "xuan666-lab"
+   GH_TOKEN="$XUAN666_GH_TOKEN" gh release create v<version> --repo xuan666-lab/dsh-openrouter-provider-advisor --title "v<version>" --notes "<release notes>"
+   unset XUAN666_GH_TOKEN
    ```
 
 5. 发布 npm。授权方式为已登录的 npm 账号配合发布时生成的一次性网页 2FA，不在项目中保存 token 或 OTP。若返回 `EOTP`，打开终端本次输出的完整 `https://www.npmjs.com/auth/cli/<id>` 地址完成授权，然后重新执行发布；不要使用被脱敏或上一次生成的链接：

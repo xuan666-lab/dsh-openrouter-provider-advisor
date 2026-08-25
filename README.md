@@ -154,7 +154,7 @@ POST /api/v1/presets/{slug}/chat/completions
 ## 本地源码开发
 
 ```bash
-git clone https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor.git
+git clone https://github.com/xuan666-lab/dsh-openrouter-provider-advisor.git
 cd dsh-openrouter-provider-advisor
 npm install
 npm run verify

@@ -12,11 +12,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor.git"
+    "url": "git+https://github.com/xuan666-lab/dsh-openrouter-provider-advisor.git"
   },
-  "homepage": "https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor#readme",
+  "homepage": "https://github.com/xuan666-lab/dsh-openrouter-provider-advisor#readme",
   "bugs": {
-    "url": "https://github.com/xuanfengtechx/dsh-openrouter-provider-advisor/issues"
+    "url": "https://github.com/xuan666-lab/dsh-openrouter-provider-advisor/issues"
   },
   "publishConfig": {
     "access": "public"
