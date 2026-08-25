@@ -41,11 +41,14 @@
    unset XUAN666_GH_TOKEN
    ```
 
-5. 发布 npm。授权方式为已登录的 npm 账号配合发布时生成的一次性网页 2FA，不在项目中保存 token 或 OTP。若返回 `EOTP`，打开终端本次输出的完整 `https://www.npmjs.com/auth/cli/<id>` 地址完成授权，然后重新执行发布；不要使用被脱敏或上一次生成的链接：
+5. 推送版本 tag 后，`.github/workflows/publish.yml` 使用 npm Trusted Publisher（OIDC）自动发布并生成 provenance；常规发布不使用长期 `NPM_TOKEN`，也不需要本机 OTP。查看并等待发布任务：
 
    ```bash
-   npm publish --access public
+   gh run list --workflow publish.yml --limit 1
+   gh run watch <run-id>
    ```
+
+   仅在 GitHub Actions 不可用时才从本机执行 `npm publish --access public` 作为应急回退；本机发布使用已登录 npm 账号和一次性网页 2FA，不在项目中保存 token 或 OTP。
 
 6. 最终核验 GitHub、Release 和 npm 版本一致：
 
