@@ -6,6 +6,17 @@ It combines quantization, speed, cache-heavy pricing, context, and uptime into a
 
 > **Core value: reduce avoidable inference spend without changing models, while finding a practical balance between cost, speed, and reliability.**
 
+The recommendations can surface same-model routes priced well below the model vendor's own API. For example, the StreamLake `deepseek-v4-flash-0731` quote shown on 2026-08-25 compares with DeepSeek's peak-hour Flash pricing as follows, using `1 USD ≈ 6.7225 CNY`:
+
+| Per 1M tokens | StreamLake | DeepSeek peak hours | Estimated reduction |
+| --- | ---: | ---: | ---: |
+| Input (cache hit) | $0.0028 ≈ ¥0.0188 | ¥0.10 | **81.2%** |
+| Input (cache miss) | $0.088 ≈ ¥0.5916 | ¥3.00 | **80.3%** |
+| Output | $0.064 ≈ ¥0.4302 | ¥9.00 | **95.2%** |
+| Code Agent weighted estimate (2% / 8% / 90%) | ≈ ¥0.0632 | ≈ ¥0.8700 | **92.7%** |
+
+> This is a point-in-time example, not a guarantee of persistent savings. OpenRouter provider quotes, DeepSeek pricing, and FX rates can all change; check the live recommendations and [DeepSeek's official pricing page](https://api-docs.deepseek.com/quick_start/pricing/). FX reference: [USD/CNY on 2026-08-25](https://www.investing.com/currencies/usd-cny-historical-data).
+
 [中文](./README.md) · **English**
 
 ![OpenRouter provider ranking](./docs/images/provider-panel.png)
@@ -17,7 +28,7 @@ It combines quantization, speed, cache-heavy pricing, context, and uptime into a
 - Model-aware ranking without a hard-coded model catalog.
 - Best overall, price-first, speed-first, and context-first strategies.
 - Code Agent price blend: 2% input, 8% output, 90% cache-read by default.
-- Gentle 30-minute uptime safety bands and hard filtering for unavailable endpoints.
+- Continuous, gentle 30-minute uptime penalties and hard filtering for unavailable endpoints.
 - One-click switching for the active session and deployment default.
 - Linked percentage sliders with locks; each group always totals 100%.
 - Reuses DSH credential references; API keys never reach the browser.
@@ -78,13 +89,14 @@ cost = input price × 2% + output price × 8% + cache-read price × 90%
 | OpenRouter trailing 30-minute uptime | Score retained |
 | --- | ---: |
 | ≥99.5% | 100% |
-| 99–99.5% | 85% |
-| 97–99% | 60% |
-| 90–97% | 30% |
-| <90% | 5% |
-| Missing | 70% |
+| 99–99.5% | 97%–100% (continuous) |
+| 98–99% | 90%–97% (continuous) |
+| 95–98% | 75%–90% (continuous) |
+| 90–95% | 50%–75% (continuous) |
+| <90% | 10%–50% (continuous) |
+| Missing | 85% |
 
-Endpoints with nonzero status are excluded. User settings may make penalties stricter, never looser.
+Endpoints with nonzero status are excluded. Configured penalties ramp in across five percentage points below the threshold and combine with the stricter general curve.
 
 ## Credentials and security
 
