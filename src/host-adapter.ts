@@ -2,7 +2,18 @@ import type { Config } from './config.js'
 import { OpenRouterProviderController, type ControllerDependencies, type ProviderProfile, type ResolvedProviderCredential, type SessionSelection } from './controller.js'
 import { OpenRouterClient } from './openrouter.js'
 
-interface RpcResult<T> { result: { ok: true; value: T } | { ok: false; error: { code: string; message: string } } }
+/**
+ * Session model catalog surfaced by `ctx.sessionController.modelCatalog()`
+ * (structural subset — the full wire type carries more fields).
+ */
+interface SessionModelCatalog {
+  default: SessionSelection
+  groups?: Array<{
+    id: string
+    name: string
+    models: Array<{ id: string; name: string; contextWindow?: number; [key: string]: unknown }>
+  }>
+}
 
 export interface HostContextLike {
   credentials: { resolve(ref: unknown): Promise<{ value: string } | undefined> }
@@ -10,21 +21,16 @@ export interface HostContextLike {
     get(ns: unknown): unknown
     mutate(ns: unknown, ops: Array<{ op: 'set'; path: string[]; value: unknown }>): Promise<void>
   }
-  apiProxy: {
-    sessions: {
-      models(input: { payload: { sessionId: string } }): Promise<RpcResult<{
-        current: SessionSelection
-        groups?: Array<{ id: string; name: string; models: Array<{ id: string; name: string }> }>
-      }>>
-      selectModel(input: { payload: { sessionId: string; provider: string; model: string; reasoningEffort?: string } }): Promise<RpcResult<{ selected: SessionSelection }>>
-    }
+  /**
+   * Host Session business API (dsh >= 0.1.2, provided by dsh-api-session-controller).
+   * Replaces the removed `apiProxy` RPC service: catalog reads and session model
+   * selections now go through this in-process service instead of an HTTP remote.
+   */
+  sessionController: {
+    modelCatalog(): Promise<SessionModelCatalog>
+    selectModel(request: { sessionId: string; provider: string; model: string; reasoningEffort?: string }): Promise<unknown>
   }
-  agentDefaultModel: { saveSelection(selection: Omit<SessionSelection, never>): Promise<void> }
-}
-
-function unwrap<T>(operation: string, response: RpcResult<T>): T {
-  if (!response.result.ok) throw new Error(`${operation} failed: ${response.result.error.code}: ${response.result.error.message}`)
-  return response.result.value
+  agentDefaultModel: { saveSelection(selection: SessionSelection): Promise<void> }
 }
 
 interface PiConfig { providers?: Record<string, ProviderProfile> }
@@ -41,6 +47,7 @@ export function createHostController(ctx: HostContextLike, config: () => Config,
   }
   const profiles = (): Record<string, ProviderProfile> => (ctx.settings.get('llm-pi-ai' as never) as PiConfig | undefined)?.providers ?? {}
   const fallbackRef = 'OPENROUTER_API_KEY'
+  const catalog = async (): Promise<SessionModelCatalog> => ctx.sessionController.modelCatalog()
   const deps: ControllerDependencies = {
     config,
     credential: async provider => {
@@ -53,10 +60,15 @@ export function createHostController(ctx: HostContextLike, config: () => Config,
       if (fallback?.value) return { configured: true, ref: fallbackRef, value: fallback.value, source: 'fallback' }
       return { configured: false, ref: providerRef ?? fallbackRef, source: providerRef === undefined ? 'fallback' : 'provider' }
     },
-    sessionSelection: async sessionId => unwrap('session.models', await ctx.apiProxy.sessions.models({ payload: { sessionId } })).current,
-    sessionDirectory: async sessionId => {
-      const value = unwrap('session.models', await ctx.apiProxy.sessions.models({ payload: { sessionId } }))
-      return { current: value.current, groups: value.groups ?? [] }
+    // The Host catalog reports the deployment default selection and every
+    // routable provider group. Per-session model overrides live in the
+    // session projection layer (client-driven); the panel resolves the exact
+    // per-session model on the client through the same model directory the
+    // composer uses, then passes an explicit provider/model override down.
+    sessionSelection: async () => (await catalog()).default,
+    sessionDirectory: async () => {
+      const value = await catalog()
+      return { current: value.default, groups: value.groups ?? [] }
     },
     providerProfile: provider => profiles()[provider],
     providerProfiles: profiles,
@@ -64,7 +76,7 @@ export function createHostController(ctx: HostContextLike, config: () => Config,
     getEndpoints: (credential, modelId, refresh) => client(credential).getEndpoints(modelId, { refresh }),
     upsertPreset: (credential, modelId, tag) => client(credential).upsertPreset(modelId, tag),
     writeModels: async (route, models) => ctx.settings.mutate('llm-pi-ai' as never, [{ op: 'set', path: ['providers', route, 'models'], value: models }]),
-    selectModel: async selection => { unwrap('session.selectModel', await ctx.apiProxy.sessions.selectModel({ payload: selection })) },
+    selectModel: async selection => { await ctx.sessionController.selectModel(selection) },
     saveDefault: selection => ctx.agentDefaultModel.saveSelection(selection),
   }
   return new OpenRouterProviderController(deps)

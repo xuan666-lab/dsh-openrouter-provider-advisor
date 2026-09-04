@@ -1,6 +1,18 @@
 # Implementation verification
 
-Verified on 2026-08-24 against the installed DSH web profile.
+Verified on 2026-08-24 against the installed DSH web profile (pre-0.1.2 API:
+`installSettingsSection`/`settingsNamespace`, `apiProxy` RPC).
+
+> **2026-09-04 port for DSH `>= 0.1.2-rc.1`**: the Host now registers its
+> settings namespace through `ctx.settings.register` and reads session model
+> catalog/selections through `ctx.sessionController.modelCatalog()` /
+> `selectModel()` (the `apiProxy` service and the old settings helpers were
+> removed upstream). The client no longer imports the removed
+> `@deepseek-ai/dsh-client-*` type packages and reads the current session from
+> the root `sessions` service instead of a seat-injected `useSessions` prop.
+> `tests/host-adapter.spec.ts` was rewritten around the `sessionController`
+> seam; `npm run verify` (80 tests + typecheck + build) passes. Live-load
+> smoke was repeated on the current DSH web profile.
 
 | Design requirement | Evidence |
 |---|---|

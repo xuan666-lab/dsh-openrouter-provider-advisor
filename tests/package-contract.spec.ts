@@ -18,6 +18,6 @@ describe('publishable DSH package contract', () => {
     expect(patch).toContain('name: dsh-openrouter-provider-advisor')
     const manifest = JSON.parse(readFileSync(new URL('../dsh.plugin.json', import.meta.url), 'utf8'))
     expect(manifest).toMatchObject({ id: 'dsh-external/dsh-openrouter-provider-advisor', main: './lib/index.js', client: { main: './lib/client.js' } })
-    expect(manifest.engines.dsh).toBe('>=0.1.1-rc.2')
+    expect(manifest.engines.dsh).toBe('>=0.1.2-rc.1')
   })
 })

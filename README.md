@@ -47,7 +47,7 @@
 
 ## 安装
 
-前置条件：DSH `0.1.1-rc.2` 或更新版本、Node.js `^22.19.0` 或 `>=24`，并已在 **DSH 设置 → 模型** 中配置 OpenRouter provider/API Key。
+前置条件：DSH `0.1.2-rc.1` 或更新版本（插件适配了 0.1.2 移除 `settingsNamespace`/`installSettingsSection` 与 `apiProxy` 服务后的 Host/Client API）、Node.js `^22.19.0` 或 `>=24`，并已在 **DSH 设置 → 模型** 中配置 OpenRouter provider/API Key。
 
 ```bash
 dsh plugin --profile web add dsh-openrouter-provider-advisor@latest
@@ -148,6 +148,7 @@ POST /api/v1/presets/{slug}/chat/completions
 | 插件已安装但界面没变化 | 硬刷新浏览器；Host 有改动时重启 DSH。 |
 | 未检测到 OpenRouter 凭据 | 在 DSH 设置 → 模型中配置 OpenRouter provider/API Key。 |
 | 某供应商分数高但请求 429 | uptime 有统计延迟，临时切换到其他供应商。 |
+| 面板默认选中的模型不是当前会话选的那一个 | DSH `>= 0.1.2` 的会话级模型选择由前端模型目录维护，Host 目录 API 只提供部署默认；在面板下拉里选择要分析的模型即可，推荐与切换都会按所选模型执行。 |
 | `minimum release age` | 等待 profile 安全策略允许该版本后重试。 |
 | DSH 拒绝 `.env` 中的 `DEEPSEEK_BASE_URL` | 从项目 `.env` 移除，并在启动 DSH 的终端中 `export`。 |
 

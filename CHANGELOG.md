@@ -2,6 +2,37 @@
 
 All notable changes to this project are documented here.
 
+## [0.1.4] - 2026-09-04
+
+### Fixed
+
+- Compatible with DSH web `>= 0.1.2-rc.1` again after the breaking client/Host
+  API changes in that release. The previous build failed to load on current
+  DSH because it imported `settingsNamespace` / `installSettingsSection` from
+  `@deepseek-ai/dsh-settings` (both removed in 0.1.2) and injected the removed
+  `apiProxy` service.
+- Host: the OpenRouter settings namespace is now registered through
+  `ctx.settings.register(...)` and read through its live owner scope
+  (`dsh >= 0.1.2` settings API), replacing the removed helper functions.
+- Host: session model catalog reads and session model selections now go
+  through `ctx.sessionController.modelCatalog()` / `selectModel(...)`
+  (the Session business API that replaced the `apiProxy` RPC service).
+- Client: dropped every import from the removed `@deepseek-ai/dsh-client-*`
+  type packages (including `dsh-client-runtime`); the bundle now types the
+  runtime structurally, like current first-party/external plugins.
+- Client: `sidebar.footer.action` / `shell.overlay` seats no longer inject a
+  `useSessions` render prop, so the trigger and overlay read the current
+  session from the root `sessions` service's list store instead.
+- Manifest: `dsh.plugin.json` engine floor raised to `>= 0.1.2-rc.1`, and the
+  client module injection list narrowed to the modules current DSH serves.
+
+### Validation
+
+- 80 automated tests passing (adapter specs updated to the
+  `sessionController` seam).
+- TypeScript typecheck and production build passing.
+- `npm audit --omit=dev` reports zero vulnerabilities.
+
 ## [0.1.3] - 2026-08-25
 
 ### Changed

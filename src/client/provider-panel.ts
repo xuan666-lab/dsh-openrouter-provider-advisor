@@ -5,13 +5,20 @@ import type { RankingStrategy } from '../config.js'
 import type { ProviderPanelStore } from './provider-panel-store.js'
 import { createI18n, useUiI18n } from './i18n.js'
 
-interface SessionListLike {
+export interface SessionListLike {
   current?: string | undefined
   currentAddress?: unknown | undefined
 }
 
-interface GlobalSlotProps {
-  useSessions<T>(selector: (state: SessionListLike) => T): T
+/**
+ * Observable snapshot of the root sessions list store. DSH >= 0.1.2 no longer
+ * injects a `useSessions` render prop into `sidebar.footer.action` /
+ * `shell.overlay` occupants, so the components subscribe to the root sessions
+ * service directly (the same list store the useSessions hook reads).
+ */
+export interface SessionsListStoreLike {
+  getSnapshot(): SessionListLike
+  subscribe(listener: () => void): () => void
 }
 
 export interface ProviderRowView {
@@ -113,12 +120,11 @@ function consume(operation: Promise<void>): void {
   void operation.catch(() => {})
 }
 
-export function ProviderSidebarTrigger(props: GlobalSlotProps & { wide: boolean; store: ProviderPanelStore }): ReactNode {
+export function ProviderSidebarTrigger(props: { wide: boolean; store: ProviderPanelStore; sessions: SessionsListStoreLike }): ReactNode {
   const i18n = useUiI18n()
-  const current = props.useSessions(state => state.current)
-  const currentAddress = props.useSessions(state => state.currentAddress)
+  const sessionState = useSyncExternalStore(props.sessions.subscribe, props.sessions.getSnapshot, props.sessions.getSnapshot)
   const panel = useSyncExternalStore(props.store.subscribe, props.store.getSnapshot, props.store.getSnapshot)
-  const target = providerTriggerState({ current, currentAddress })
+  const target = providerTriggerState(sessionState)
   return createElement(Fragment, null,
     createElement('style', null, 'div:has(> div[data-slot="sidebar.footer.action"] > button[data-openrouter-provider-trigger]){flex-wrap:wrap;row-gap:4px}'),
     createElement('button', {
@@ -145,12 +151,11 @@ export function freshnessLabel(updatedAt: number, now: number, i18n = createI18n
 
 export const providerGridColumns = 'minmax(110px,1fr) minmax(0,2fr) minmax(54px,auto)'
 
-export function ProviderOverlay(props: GlobalSlotProps & { store: ProviderPanelStore }): ReactNode {
+export function ProviderOverlay(props: { store: ProviderPanelStore; sessions: SessionsListStoreLike }): ReactNode {
   const i18n = useUiI18n()
-  const current = props.useSessions(state => state.current)
-  const currentAddress = props.useSessions(state => state.currentAddress)
+  const sessionState = useSyncExternalStore(props.sessions.subscribe, props.sessions.getSnapshot, props.sessions.getSnapshot)
   const state = useSyncExternalStore(props.store.subscribe, props.store.getSnapshot, props.store.getSnapshot)
-  const target = providerTriggerState({ current, currentAddress })
+  const target = providerTriggerState(sessionState)
   const dialogRef = useRef<HTMLElement>(null)
   const [now, setNow] = useState(() => Date.now())
 

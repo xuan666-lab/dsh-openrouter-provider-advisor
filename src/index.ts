@@ -1,6 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import { DEFAULT_CONFIG, validateConfig, type Config as ProviderConfig } from './config.js'
@@ -9,8 +8,22 @@ import { createProviderRoute } from './host-routes.js'
 import { createProviderTools, providerToolApproval } from './tools.js'
 
 export const name = 'openrouter-providers'
-export const inject = ['tools', 'settings', 'credentials', 'agentDefaultModel', 'apiProxy', 'webServer']
-export const NS = settingsNamespace('openrouter-providers')
+/**
+ * Required host services.
+ *
+ * `sessionController` (Session Remote owner, provided by dsh-api-session-controller)
+ * replaced the pre-0.1.2 `apiProxy` RPC service that was removed from DSH: the
+ * panel now reads the shared model catalog and installs session model
+ * selections directly through the Host Session business API.
+ */
+export const inject = ['tools', 'settings', 'credentials', 'agentDefaultModel', 'sessionController', 'webServer']
+
+/**
+ * Settings namespace this plugin owns. Registered through the current
+ * `ctx.settings.register` API; the older `settingsNamespace()` helper was
+ * removed in DSH 0.1.2.
+ */
+export const NS = 'openrouter-providers' as const
 
 const weights = z.object({
   quantization: z.number().min(0).max(1).default(0.3),
@@ -34,17 +47,30 @@ export const Config: z<ProviderConfig> = z.object({
 })
 
 export function apply(ctx: Context, initial: ProviderConfig = DEFAULT_CONFIG): void {
-  let source = () => initial
-  installSettingsSection(ctx, NS, Config, initial, {
-    validate: validateConfig,
-    setSource: current => { source = current },
-    onChange: () => {},
-  })
+  // Current settings API (dsh >= 0.1.2): registering a namespace returns a live
+  // owner scope whose resolved value layers schema defaults → composition base →
+  // user section. `scope.get()` is always authoritative, so the adapter reads it
+  // through a thunk instead of the removed installSettingsSection source hooks.
+  // The `settings` service is not declared on the plain cordis Context type, so
+  // it is typed structurally below (the dsh-settings package no longer needs to
+  // be an import-time dependency of the bundle).
+  const settingsHost = ctx as unknown as {
+    settings: {
+      register(
+        ns: string,
+        schema: typeof Config,
+        options: { base?: Partial<ProviderConfig>; validate?: (value: ProviderConfig) => void },
+      ): { get(): unknown }
+    }
+  }
+  const scope = settingsHost.settings.register(NS, Config, { base: initial, validate: validateConfig })
+  const readConfig = (): ProviderConfig => scope.get() as ProviderConfig
+
   const host = ctx as unknown as HostContextLike & {
     tools: { register(tool: unknown): () => void }
     webServer: { register(route: { kind: 'prefix'; path: string; handler: ReturnType<typeof createProviderRoute> }): () => void }
   }
-  const controller = createHostController(host, () => source(), credentialRef)
+  const controller = createHostController(host, readConfig, credentialRef)
   ctx.effect(() => ctx.on('tools/pre-execute', providerToolApproval), 'openrouter-providers: approve provider switch')
   ctx.effect(() => host.webServer.register({ kind: 'prefix', path: '/api/openrouter-providers', handler: createProviderRoute(controller) }), 'openrouter-providers: host routes')
   for (const tool of createProviderTools(defineTool as unknown as (definition: Record<string, unknown>) => unknown, controller)) {
