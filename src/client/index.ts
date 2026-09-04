@@ -46,7 +46,7 @@ export function apply(ctx: OrpClientContext): void {
     name: 'sidebar.footer.action', id: 'openrouter-providers-trigger', order: 20,
   } as never, BoundTrigger as never))
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-    name: 'shell.overlay',
+    name: 'shell.overlay', id: 'openrouter-providers-overlay',
   } as never, BoundOverlay as never))
   ctx.effect(() => () => panelStore.dispose(), 'openrouter-providers: provider panel store')
 
