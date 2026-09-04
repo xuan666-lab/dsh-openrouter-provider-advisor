@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [0.1.5] - 2026-09-04
+
+### Fixed
+
+- Client: `shell.overlay` now supplies the stable slot `id` required by DSH list-slot validation, preventing the plugin loader error.
+
+### Validation
+
+- 81 automated tests passing.
+- TypeScript typecheck and production build passing.
+
 ## [0.1.4] - 2026-09-04
 
 ### Fixed
